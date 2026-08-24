@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(0.985 0.005 150);
+  --foreground: oklch(0.2 0.02 150);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.02 150);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.02 150);
+  --primary: #2563EB;
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.96 0.02 150);
+  --secondary-foreground: oklch(0.25 0.04 150);
+  --muted: oklch(0.96 0.01 150);
+  --muted-foreground: oklch(0.5 0.02 150);
+  --accent: #60a5fa;
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.6 0.22 25);
+  --destructive-foreground: oklch(0.99 0.005 150);
+  --border: oklch(0.92 0.01 150);
+  --input: oklch(0.92 0.01 150);
+  --ring: #2563EB;
+  --sidebar-background: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.3 0.02 150);
+  --sidebar-primary: #2563EB;
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.94 0.08 150);
+  --sidebar-accent-foreground: oklch(0.25 0.1 150);
+  --sidebar-border: oklch(0.92 0.01 150);
+  --sidebar-ring: #2563EB;
+}
+
+.dark {
+  --background: oklch(0.16 0.02 150);
+  --foreground: oklch(0.96 0.01 150);
+  --card: oklch(0.22 0.02 150);
+  --card-foreground: oklch(0.96 0.01 150);
+  --popover: oklch(0.22 0.02 150);
+  --popover-foreground: oklch(0.96 0.01 150);
+  --primary: #2563EB;
+  --primary-foreground: oklch(0.16 0.02 150);
+  --secondary: oklch(0.26 0.02 150);
+  --secondary-foreground: oklch(0.96 0.01 150);
+  --muted: oklch(0.26 0.02 150);
+  --muted-foreground: oklch(0.7 0.03 150);
+  --accent: #60a5fa;
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.65 0.22 25);
+  --destructive-foreground: oklch(0.96 0.01 150);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: #2563EB;
+  --sidebar-background: oklch(0.2 0.02 150);
+  --sidebar-foreground: oklch(0.96 0.01 150);
+  --sidebar-primary: #2563EB;
+  --sidebar-primary-foreground: oklch(0.16 0.02 150);
+  --sidebar-accent: oklch(0.28 0.06 150);
+  --sidebar-accent-foreground: oklch(0.96 0.01 150);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: #2563EB;
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
+}
+
+
+
+.text-muted-foreground {
+    color: rgb(47, 52, 48) ;
+}
+
+.bg-muted {
+    background-color: rgb(231 239 254 / var(--tw-bg-opacity, 1));
+}
+
+.bg-background{
+      background-color: #f9fcff;
+}
+
+.bg-secondary {
+    background-color: #f9fcff;
+}
+
+.shadow{
+  box-shadow: 0 2px 6px rgb(165 175 196 / 60%);
+}
+
