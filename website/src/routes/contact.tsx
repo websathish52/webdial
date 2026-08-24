@@ -60,64 +60,130 @@ export default function Contact() {
             </Reveal>
 
             <Reveal direction="right" delay={120}>
-              <form
-                className="glass-card rounded-2xl p-8"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  setSending(true);
-                  const form = new FormData(e.currentTarget);
-                  try {
-                    await submitContactForm({
-                      name: String(form.get("name") ?? ""),
-                      email: String(form.get("email") ?? ""),
-                      phone: String(form.get("phone") ?? ""),
-                      company: String(form.get("company") ?? ""),
-                      service: `Telecallers: ${String(form.get("agents") ?? "N/A")}`,
-                      message: String(form.get("message") ?? ""),
-                    });
-                    setSent(true);
-                    e.currentTarget.reset();
-                    toast.success("Enquiry sent successfully. Our team will contact you shortly.");
-                  } catch (error) {
-                    toast.error(error instanceof Error ? error.message : "Unable to send your enquiry.");
-                  } finally {
-                    setSending(false);
-                  }
-                }}
-              style={{    backgroundImage: "linear-gradient(356deg, rgb(230 238 255 / 98%), rgba(255, 255, 255, 0.96))"}}>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full name</Label>
-                    <Input id="name" name="name" required placeholder="Sathish Kumar" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="company">Company</Label>
-                    <Input id="company" name="company" placeholder="WebDial Pvt Ltd" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" name="email" type="email" required placeholder="you@example.com" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input id="phone" name="phone" required placeholder="+91 98765 43210" />
-                  </div>
-                </div>
-                <div className="mt-4 space-y-2">
-                  <Label htmlFor="agents">Number of telecallers</Label>
-                  <Input id="agents" name="agents" type="number" min={1} placeholder="10" />
-                </div>
-                <div className="mt-4 space-y-2">
-                  <Label htmlFor="msg">What do you need?</Label>
-                  <Textarea id="msg" name="message" required rows={4} placeholder="We run an outbound admissions team..." />
-                </div>
-                <Button type="submit" variant="hero" size="lg" className="mt-6 w-full rounded-sm">
-                  {sending ? "Sending..." : sent ? "Request received" : "Request a demo"}
-                </Button>
-                <p className="mt-3 text-center text-xs text-muted-foreground">
-                  No spam. We only use your details to contact you about WebDial.
-                </p>
-              </form>
+             <form
+  className="glass-card rounded-2xl p-8"
+  onSubmit={async (e) => {
+    e.preventDefault();
+
+    const formElement = e.currentTarget;
+    const form = new FormData(formElement);
+
+    setSending(true);
+
+    try {
+      await submitContactForm({
+        name: String(form.get("name") ?? ""),
+        email: String(form.get("email") ?? ""),
+        phone: String(form.get("phone") ?? ""),
+        company: String(form.get("company") ?? ""),
+        service: `Telecallers: ${String(form.get("agents") ?? "N/A")}`,
+        message: String(form.get("message") ?? ""),
+      });
+
+      setSent(true);
+
+      formElement.reset();
+
+      toast.success(
+        "Enquiry sent successfully. Our team will contact you shortly."
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to send your enquiry."
+      );
+    } finally {
+      setSending(false);
+    }
+  }}
+  style={{
+    backgroundImage:
+      "linear-gradient(356deg, rgb(230 238 255 / 98%), rgba(255, 255, 255, 0.96))",
+  }}
+>
+  <div className="grid gap-4 sm:grid-cols-2">
+    <div className="space-y-2">
+      <Label htmlFor="name">Full name</Label>
+      <Input
+        id="name"
+        name="name"
+        required
+        placeholder="Sathish Kumar"
+      />
+    </div>
+
+    <div className="space-y-2">
+      <Label htmlFor="company">Company</Label>
+      <Input
+        id="company"
+        name="company"
+        placeholder="WebDial Pvt Ltd"
+      />
+    </div>
+
+    <div className="space-y-2">
+      <Label htmlFor="email">Email</Label>
+      <Input
+        id="email"
+        name="email"
+        type="email"
+        required
+        placeholder="you@example.com"
+      />
+    </div>
+
+    <div className="space-y-2">
+      <Label htmlFor="phone">Phone</Label>
+      <Input
+        id="phone"
+        name="phone"
+        required
+        placeholder="+91 98765 43210"
+      />
+    </div>
+  </div>
+
+  <div className="mt-4 space-y-2">
+    <Label htmlFor="agents">Number of telecallers</Label>
+    <Input
+      id="agents"
+      name="agents"
+      type="number"
+      min={1}
+      placeholder="10"
+    />
+  </div>
+
+  <div className="mt-4 space-y-2">
+    <Label htmlFor="msg">What do you need?</Label>
+    <Textarea
+      id="msg"
+      name="message"
+      required
+      rows={4}
+      placeholder="We run an outbound admissions team..."
+    />
+  </div>
+
+  <Button
+    type="submit"
+    variant="hero"
+    size="lg"
+    disabled={sending}
+    className="mt-6 w-full rounded-sm"
+  >
+    {sending
+      ? "Sending..."
+      : sent
+        ? "Request received"
+        : "Request a demo"}
+  </Button>
+
+  <p className="mt-3 text-center text-xs text-muted-foreground">
+    No spam. We only use your details to contact you about WebDial.
+  </p>
+</form>
             </Reveal>
           </div>
         </section>
