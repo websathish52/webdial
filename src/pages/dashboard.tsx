@@ -330,7 +330,7 @@ function Dashboard() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-<div className="hidden md:grid md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 text-xs text-muted-foreground font-semibold p-3 bg-muted/40 rounded-lg pipeline-header">
+        <div className="hidden md:grid md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 text-xs text-muted-foreground font-semibold p-3 bg-muted/40 rounded-lg pipeline-header">
           <div className="flex items-center gap-1.5"><UserRound className="size-3.5" /> Team / Member</div>
           <div className="text-center flex items-center justify-center gap-1.5"><CheckCircle2 className="size-3.5" /> Status</div>
           <div className="text-center flex items-center justify-center gap-1.5"><TimerReset className="size-3.5" /> Talk Time</div>
@@ -342,19 +342,37 @@ function Dashboard() {
           {teamActivity.map((user) => {
             const status = user.callsTodayCount > 0 ? "Present" : "Offline";
             return (
-              <div key={user.id || user._id} className="grid md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center p-3 rounded-lg hover:bg-muted/50 border-b md:border-none">
-                <div className="flex items-center gap-3 col-span-full md:col-span-1">
+              <div key={user.id || user._id} className="rounded-lg border p-3 hover:bg-muted/50 md:grid md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] md:items-center md:gap-4 md:border-none md:p-3 md:rounded-none md:hover:bg-transparent">
+                <div className="flex items-center gap-3 md:col-span-1">
                   <div className="size-10 rounded-full bg-muted grid place-items-center font-bold">{user.name.split(" ").map((n) => n[0]).join("")}</div>
                   <div>
                     <div className="font-medium">{user.name}</div>
                     <div className="text-xs text-muted-foreground">{user.role || "Team Member"}</div>
                   </div>
                 </div>
-                <div className="text-center"><span className={`text-xs px-2 py-1 rounded-full font-semibold ${status === "Present" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>{status}</span></div>
-                <div className="text-center text-sm">{(user.talkTime / 60).toFixed(1)} mins</div>
-                <div className="text-center text-sm">{user.userCalls.length} calls</div>
-                <div className="text-center text-sm">{user.callsTodayCount > 0 ? <span className="text-success font-semibold">Present</span> : '—'}</div>
-                <div className="text-center text-sm text-muted-foreground">{user.lastCall ? new Date(user.lastCall.calledAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : "No history"}</div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2 text-sm md:mt-0 md:contents">
+                  <div className="md:text-center">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">Status</div>
+                    <span className={`inline-flex text-xs px-2 py-1 rounded-full font-semibold ${status === "Present" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>{status}</span>
+                  </div>
+                  <div className="md:text-center">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">Talk Time</div>
+                    <span className="text-sm">{(user.talkTime / 60).toFixed(1)} mins</span>
+                  </div>
+                  <div className="md:text-center">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">Productivity</div>
+                    <span className="text-sm">{user.userCalls.length} calls</span>
+                  </div>
+                  <div className="md:text-center">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">Attendance</div>
+                    <span className="text-sm">{user.callsTodayCount > 0 ? <span className="text-success font-semibold">Present</span> : '—'}</span>
+                  </div>
+                  <div className="col-span-2 md:col-auto md:text-center">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">Last Active</div>
+                    <span className="text-sm text-muted-foreground">{user.lastCall ? new Date(user.lastCall.calledAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : "No history"}</span>
+                  </div>
+                </div>
               </div>
             );
           })}

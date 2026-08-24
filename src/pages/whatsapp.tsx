@@ -94,9 +94,9 @@ function WhatsappPage() {
         </div>
       </div>
 
-      <div className="grid md:grid-cols-[300px_1fr] gap-3 bg-card border rounded-2xl overflow-hidden" style={{ height: "70vh" }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-3 bg-card border rounded-2xl overflow-hidden min-h-[70vh] lg:h-[70vh]">
         {/* Contacts */}
-        <div className="border-r flex flex-col min-h-0">
+        <div className="border-b lg:border-r lg:border-b-0 flex flex-col min-h-0">
           <div className="p-3 border-b space-y-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground"/>
@@ -111,7 +111,7 @@ function WhatsappPage() {
               </Select>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto max-h-[40vh] lg:max-h-none">
             {filtered.map(c => (
               <button key={c.phone} onClick={()=>setActive(c)}
                 className={`w-full text-left flex items-center gap-3 p-3 border-b hover:bg-muted/50 ${active?.phone===c.phone ? "bg-blue-50" : ""}`}>
@@ -127,7 +127,7 @@ function WhatsappPage() {
         </div>
 
         {/* Thread */}
-        <div className="flex flex-col min-h-0" style={{
+        <div className="flex flex-col min-h-[40vh] lg:min-h-0" style={{
           backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60'><text x='0' y='40' font-size='30' opacity='0.05'>💬</text></svg>\")",
           backgroundColor: "#f0f2f5",
         }}>

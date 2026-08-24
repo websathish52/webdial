@@ -71,14 +71,14 @@ export function HeroBanner({
         </div>
       </div>
 
-      <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+      <div className="flex flex-wrap gap-3">
         {tabs.map((t, i) => (
           <div
             key={i}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-md bg-white/10 border border-white/25 text-sm font-medium"
+            className="flex min-w-[140px] flex-1 items-center gap-2 rounded-md border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-medium sm:min-w-[160px]"
           >
             {t.icon}
-            <span>{t.label}</span>
+            <span className="truncate">{t.label}</span>
           </div>
         ))}
       </div>

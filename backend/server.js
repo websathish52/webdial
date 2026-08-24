@@ -28,11 +28,32 @@ app.use(helmet({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(morgan('dev'));
 
-// during development allow all origins for easier frontend integration
-const corsOptions = process.env.NODE_ENV === 'production' ? { origin: process.env.VITE_API_URL || 'http://localhost:5173', credentials: true } : { origin: true, credentials: true };
-app.use(cors(corsOptions));
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'http://localhost:3000',
+  'https://dial.webcodexus.com',
+  'https://www.dial.webcodexus.com',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin)
+      ) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    },
+    credentials: true,
+  })
+);
 
 // static uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

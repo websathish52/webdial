@@ -21,6 +21,14 @@ const dropdowns = [
 
 export function Header() {
   const [open, setOpen] = useState(false);
+  const [mobileDropdowns, setMobileDropdowns] = useState<Record<string, boolean>>({});
+
+  const toggleMobileDropdown = (label: string) => {
+    setMobileDropdowns((prev) => ({
+      ...prev,
+      [label]: !prev[label],
+    }));
+  };
 
   return (
 <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)]">      <div className="mx-auto flex h-[88px] max-w-7xl items-center justify-between px-5  top-0 left-0 right-0 z-50 p-0 transition-all duration-300 ">
@@ -111,14 +119,37 @@ export function Header() {
                 {item.label}
               </a>
             ))}
-            {dropdowns.map((menu) => (
-              <div key={menu.label} className="border-t border-border/60 py-2">
-                <p className="px-2 py-2 text-sm font-semibold text-[#293a51]">{menu.label}</p>
-                {menu.links.map(([label, href]) => (
-                  <a key={label} href={href} onClick={() => setOpen(false)} className="block rounded-md px-4 py-2 text-sm text-[#293a51] hover:text-foreground">{label}</a>
-                ))}
-              </div>
-            ))}
+            {dropdowns.map((menu) => {
+              const isOpen = !!mobileDropdowns[menu.label];
+
+              return (
+                <div key={menu.label} className="border-t border-border/60 py-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleMobileDropdown(menu.label)}
+                    className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm font-semibold text-[#293a51]"
+                    aria-expanded={isOpen}
+                  >
+                    <span>{menu.label}</span>
+                    <ChevronDown className={`size-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                  </button>
+                  {isOpen && (
+                    <div className="pt-1">
+                      {menu.links.map(([label, href]) => (
+                        <a
+                          key={label}
+                          href={href}
+                          onClick={() => setOpen(false)}
+                          className="block rounded-md px-4 py-2 text-sm text-[#293a51] hover:text-foreground"
+                        >
+                          {label}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             <a
               href="/contact"
               onClick={() => setOpen(false)}
@@ -126,6 +157,16 @@ export function Header() {
             >
               Contact
             </a>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="mt-3 border border-[#083ACD]/20 bg-[#083ACD]/5 px-4 py-4 text-md font-semibold text-[#083ACD] shadow-sm transition-all duration-300 hover:border-[#083ACD]/40 hover:bg-[#083ACD]/10 hover:text-[#083ACD] active:scale-95 rounded-sm"
+            >
+              <a href="/auth" onClick={() => setOpen(false)}>
+                Sign in
+              </a>
+            </Button>
             <Button asChild variant="hero" className="zoom-glow mt-3 transition-all duration-300 hover:scale-[1.02]">
               <a href="/contact" onClick={() => setOpen(false)}>
                 Start free trial

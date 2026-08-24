@@ -44,7 +44,7 @@ export default function PaymentPage() {
     <div className="min-h-screen bg-[#f5f5f5]">
       {/* <SettingsTopBar title="Subscribe" /> */}
 
-      <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+      <div className="p-4 sm:p-6 space-y-6 max-w-[1600px] mx-auto">
         <HeroBanner
           icon={<CreditCard className="w-6 h-6 text-white" />}
           title="Subscribe"
@@ -62,10 +62,10 @@ export default function PaymentPage() {
           ]}
         />
 
-        <div className="grid lg:grid-cols-[1fr_400px] gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-6">
           <div className="space-y-6">
             {/* Summary cards */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               <SummaryCard title="Cycle" value="WebDial Enterprise Basic Monthly" />
               <SummaryCard title="Expiry" value="Jul 31, 2026 1:43 PM" />
               <SummaryCard title="Member Limit" value="4" extra={<span className="text-xs" style={{ color: BRAND }}>● 4 added users</span>} />
@@ -100,7 +100,7 @@ export default function PaymentPage() {
 
               <div className="mt-6">
                 <p className="text-sm font-semibold mb-2">Choose Renewal</p>
-                <div className="flex gap-6 text-sm">
+                <div className="flex flex-wrap gap-3 sm:gap-6 text-sm">
                   {["monthly", "halfyearly", "yearly"].map((r) => (
                     <label key={r} className="flex items-center gap-2 capitalize cursor-pointer">
                       <input
@@ -119,23 +119,25 @@ export default function PaymentPage() {
                 <div className="text-3xl font-bold text-gray-900">Rs 0<span className="text-sm text-gray-500">/user</span></div>
                 <div className="text-sm text-gray-500">You will be charged Rs 0.00 (+Taxes) per month</div>
 
-                <div className="mt-6 flex items-center justify-center gap-4">
+                <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
                   <span className="text-sm text-gray-600">Choose No of Users</span>
-                  <button
-                    onClick={() => setUsers(Math.max(1, users - 1))}
-                    className="w-8 h-8 rounded-full text-white flex items-center justify-center"
-                    style={{ backgroundColor: BRAND }}
-                  >−</button>
-                  <input
-                    value={users}
-                    onChange={(e) => setUsers(Number(e.target.value) || 1)}
-                    className="w-40 text-center border rounded-md py-1.5"
-                  />
-                  <button
-                    onClick={() => setUsers(users + 1)}
-                    className="w-8 h-8 rounded-full text-white flex items-center justify-center"
-                    style={{ backgroundColor: BRAND }}
-                  >+</button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setUsers(Math.max(1, users - 1))}
+                      className="w-8 h-8 rounded-full text-white flex items-center justify-center"
+                      style={{ backgroundColor: BRAND }}
+                    >−</button>
+                    <input
+                      value={users}
+                      onChange={(e) => setUsers(Number(e.target.value) || 1)}
+                      className="w-28 sm:w-40 text-center border rounded-md py-1.5"
+                    />
+                    <button
+                      onClick={() => setUsers(users + 1)}
+                      className="w-8 h-8 rounded-full text-white flex items-center justify-center"
+                      style={{ backgroundColor: BRAND }}
+                    >+</button>
+                  </div>
                 </div>
 
                 <button
@@ -203,7 +205,7 @@ export default function PaymentPage() {
             <h3 className="font-bold text-gray-900 mb-4">Payment Profile</h3>
             <div className="space-y-3">
               <ProfileField label="Company Name *" value="Web" />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <ProfileField label="First Name *" value="Sidhartha" />
                 <ProfileField label="Last Name *" value="Mohan" />
               </div>
@@ -211,7 +213,7 @@ export default function PaymentPage() {
               <ProfileField label="Phone *" value="+919884339436" />
               <ProfileField label="Address *" value="Flat 'F', 2nd Floor, 11th Sector Park, Plot #922, 66th St, Sector 11, K. K. Nagar" />
               <ProfileField label="State *" value="Tamil Nadu" />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <ProfileField label="City *" value="Chennai" />
                 <ProfileField label="Pincode *" value="600078" />
               </div>
@@ -243,7 +245,7 @@ function SummaryCard({ title, value, extra }: { title: string; value: string; ex
 
 function ProfileField({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="space-y-1">
       <label className="text-xs text-gray-500">{label}</label>
       <input defaultValue={value} className="w-full border-b py-1.5 text-sm outline-none focus:border-b-2" />
     </div>
