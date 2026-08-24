@@ -95,28 +95,41 @@ export function ContactStrip() {
           <Reveal direction="right" delay={120} className="lg:col-span-2">
             <form
               className="glass-card rounded-2xl p-8"
-              onSubmit={async (event) => {
-                event.preventDefault();
-                setSending(true);
-                const form = new FormData(event.currentTarget);
-                try {
-                  await submitContactForm({
-                    name: String(form.get("name") ?? ""),
-                    email: String(form.get("email") ?? ""),
-                    phone: String(form.get("phone") ?? ""),
-                    company: String(form.get("company") ?? ""),
-                    service: `Telecallers: ${String(form.get("agents") ?? "N/A")}`,
-                    message: String(form.get("message") ?? ""),
-                  });
-                  setSent(true);
-                  event.currentTarget.reset();
-                  toast.success("Enquiry sent successfully. Our team will contact you shortly.");
-                } catch (error) {
-                  toast.error(error instanceof Error ? error.message : "Unable to send your enquiry.");
-                } finally {
-                  setSending(false);
-                }
-              }}
+   onSubmit={async (event) => {
+  event.preventDefault();
+
+  const formElement = event.currentTarget;
+  const form = new FormData(formElement);
+
+  setSending(true);
+
+  try {
+    await submitContactForm({
+      name: String(form.get("name") ?? "").trim(),
+      email: String(form.get("email") ?? "").trim(),
+      phone: String(form.get("phone") ?? "").trim(),
+      company: String(form.get("company") ?? "").trim(),
+      service: `Telecallers: ${String(form.get("agents") ?? "N/A")}`,
+      message: String(form.get("message") ?? "").trim(),
+    });
+
+    formElement.reset();
+
+    setSent(true);
+
+    toast.success(
+      "Enquiry sent successfully. Our team will contact you shortly."
+    );
+  } catch (error) {
+    toast.error(
+      error instanceof Error
+        ? error.message
+        : "Unable to send your enquiry."
+    );
+  } finally {
+    setSending(false);
+  }
+}}
            style={{ backgroundImage: "linear-gradient(356deg, rgb(230 238 255 / 98%), rgba(255, 255, 255, 0.96))" }}>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">

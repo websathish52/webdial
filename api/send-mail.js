@@ -10,7 +10,6 @@ const escapeHtml = (value) =>
   })[character]);
 
 export default async function handler(req, res) {
-  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -19,12 +18,10 @@ export default async function handler(req, res) {
     "application/json; charset=UTF-8"
   );
 
-  // OPTIONS request
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
-  // Only POST
   if (req.method !== "POST") {
     return res.status(405).json({
       success: false,
@@ -32,32 +29,19 @@ export default async function handler(req, res) {
     });
   }
 
-  /*
-   * =========================================================
-   * ZOHO LOGIN
-   * =========================================================
-   * .env வேண்டாம்.
-   * Username & password இங்கேயே இருக்கும்.
-   */
-
+  // WARNING:
+  // If these are real credentials, change the password because
+  // it was exposed in the conversation.
   const ZOHO_USER = "sathish@webcodexus.com";
   const ZOHO_PASS = "HJyjfcxF89ad";
 
   try {
-    // Parse request body
     const data =
       typeof req.body === "string"
         ? JSON.parse(req.body)
         : req.body || {};
 
-    /*
-     * =========================================================
-     * FORM DATA
-     * =========================================================
-     */
-
     const name = String(data.name ?? "").trim();
-
     const email = String(data.email ?? "").trim();
 
     const phone =
@@ -72,12 +56,7 @@ export default async function handler(req, res) {
     const message =
       String(data.message ?? "").trim() || "N/A";
 
-    /*
-     * =========================================================
-     * VALIDATION
-     * =========================================================
-     */
-
+    // Email is required for every form
     if (!email) {
       return res.status(400).json({
         success: false,
@@ -85,48 +64,72 @@ export default async function handler(req, res) {
       });
     }
 
-    // Newsletter form
-    if (!name) {
-      // Newsletter subscriber
-      const subscriberName = "Newsletter Subscriber";
+    // Correct email validation
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email address.",
+      });
+    }
 
+    // Zoho SMTP
+    const transporter = nodemailer.createTransport({
+      host: "smtp.zoho.in",
+      port: 465,
+      secure: true,
+      auth: {
+        user: ZOHO_USER,
+        pass: ZOHO_PASS,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
+
+    /*
+     * ==========================================
+     * NEWSLETTER SUBSCRIPTION
+     * ==========================================
+     */
+
+    if (!name) {
       const newsletterFields = {
-        name: subscriberName,
+        name: "Newsletter Subscriber",
         email,
         phone: "N/A",
         company: "N/A",
-        service: service || "WebDial Newsletter Subscription",
-        message: message || "User subscribed to WebDial updates.",
+        service: "WebDial Newsletter Subscription",
+        message: "User subscribed to WebDial updates.",
       };
 
       const newsletterHtml = Object.entries(newsletterFields)
         .map(
           ([label, value]) => `
-            <p style="margin:0 0 15px;">
-              <strong style="text-transform:capitalize;">
-                ${escapeHtml(label)}:
-              </strong>
-              <br>
-              ${escapeHtml(value).replace(/\n/g, "<br>")}
-            </p>
+            <div style="
+              margin-bottom:18px;
+              padding-bottom:14px;
+              border-bottom:1px solid #e5e7eb;
+            ">
+              <div style="
+                font-size:12px;
+                font-weight:700;
+                color:#6b7280;
+                text-transform:uppercase;
+                margin-bottom:5px;
+              ">
+                ${escapeHtml(label)}
+              </div>
+
+              <div style="
+                font-size:15px;
+                color:#111827;
+              ">
+                ${escapeHtml(value).replace(/\n/g, "<br>")}
+              </div>
+            </div>
           `
         )
         .join("");
-
-      const transporter = nodemailer.createTransport({
-        host: "smtp.zoho.in",
-        port: 465,
-        secure: true,
-
-        auth: {
-          user: ZOHO_USER,
-          pass: ZOHO_PASS,
-        },
-
-        tls: {
-          rejectUnauthorized: false,
-        },
-      });
 
       await transporter.sendMail({
         from: `WebDial Website <${ZOHO_USER}>`,
@@ -149,18 +152,18 @@ export default async function handler(req, res) {
 
         html: `
           <div style="
-            font-family: Arial, sans-serif;
-            max-width: 700px;
-            margin: 30px auto;
-            padding: 30px;
-            border: 1px solid #e5e7eb;
-            border-radius: 14px;
-            background: #ffffff;
+            font-family:Arial,Helvetica,sans-serif;
+            max-width:700px;
+            margin:30px auto;
+            padding:30px;
+            border:1px solid #e5e7eb;
+            border-radius:14px;
+            background:#ffffff;
           ">
 
             <h2 style="
-              margin: 0 0 25px;
-              color: #111827;
+              margin:0 0 25px;
+              color:#111827;
             ">
               WebDial Newsletter Subscription
             </h2>
@@ -178,9 +181,9 @@ export default async function handler(req, res) {
     }
 
     /*
-     * =========================================================
-     * NORMAL ENQUIRY FORM
-     * =========================================================
+     * ==========================================
+     * NORMAL CONTACT / DEMO ENQUIRY
+     * ==========================================
      */
 
     if (!message || message === "N/A") {
@@ -190,44 +193,6 @@ export default async function handler(req, res) {
       });
     }
 
-    /*
-     * EMAIL VALIDATION
-     */
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({
-        success: false,
-        message: "Please enter a valid email address.",
-      });
-    }
-
-    /*
-     * =========================================================
-     * CREATE ZOHO SMTP
-     * =========================================================
-     */
-
-    const transporter = nodemailer.createTransport({
-      host: "smtp.zoho.in",
-      port: 465,
-      secure: true,
-
-      auth: {
-        user: ZOHO_USER,
-        pass: ZOHO_PASS,
-      },
-
-      tls: {
-        rejectUnauthorized: false,
-      },
-    });
-
-    /*
-     * =========================================================
-     * ALL FORM FIELDS
-     * =========================================================
-     */
-
     const fields = {
       name,
       email,
@@ -236,12 +201,6 @@ export default async function handler(req, res) {
       service,
       message,
     };
-
-    /*
-     * =========================================================
-     * HTML CONTENT
-     * =========================================================
-     */
 
     const htmlFields = Object.entries(fields)
       .map(
@@ -253,7 +212,7 @@ export default async function handler(req, res) {
           ">
 
             <div style="
-              font-size:13px;
+              font-size:12px;
               font-weight:700;
               color:#6b7280;
               text-transform:uppercase;
@@ -274,12 +233,6 @@ export default async function handler(req, res) {
         `
       )
       .join("");
-
-    /*
-     * =========================================================
-     * SEND MAIL
-     * =========================================================
-     */
 
     await transporter.sendMail({
       from: `WebDial Website <${ZOHO_USER}>`,
@@ -304,7 +257,6 @@ export default async function handler(req, res) {
         <!DOCTYPE html>
 
         <html>
-
         <head>
           <meta charset="UTF-8">
           <title>WebDial Client Enquiry</title>
@@ -326,56 +278,21 @@ export default async function handler(req, res) {
             padding:30px;
           ">
 
-            <div style="
-              margin-bottom:25px;
-              padding-bottom:20px;
-              border-bottom:2px solid #2563eb;
+            <h2 style="
+              margin:0 0 25px;
+              color:#111827;
             ">
-
-              <h2 style="
-                margin:0;
-                color:#111827;
-                font-size:24px;
-              ">
-                WebDial Client Enquiry
-              </h2>
-
-              <p style="
-                margin:8px 0 0;
-                color:#6b7280;
-                font-size:14px;
-              ">
-                New enquiry received from WebDial website
-              </p>
-
-            </div>
+              WebDial Client Enquiry
+            </h2>
 
             ${htmlFields}
-
-            <div style="
-              margin-top:25px;
-              padding-top:20px;
-              border-top:1px solid #e5e7eb;
-              color:#6b7280;
-              font-size:12px;
-            ">
-              This email was automatically generated from the
-              WebDial website enquiry form.
-            </div>
 
           </div>
 
         </body>
-
         </html>
       `,
     });
-
-    /*
-     * =========================================================
-     * SUCCESS
-     * =========================================================
-     */
 
     return res.status(200).json({
       success: true,
@@ -384,7 +301,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-
     console.error("Mail send error:", error);
 
     return res.status(500).json({

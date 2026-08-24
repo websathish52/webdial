@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Mail, Phone, MapPin, Clock, MessageCircle, Facebook, Instagram, Youtube, Linkedin } from "lucide-react";
 import logo1 from "@/assets/logo/webdial-logo.png";
+import { submitContactForm } from "@/lib/contact";
 
 const informationLinks = [
   ["About Us", "/"],
@@ -101,27 +102,64 @@ export function Footer() {
   <div className="mt-2 mb-12 mx-auto grid max-w-4xl rounded-lg bg-[image:var(--gradient-primary)] p-6 text-center shadow-[0_18px_42px_-26px_rgba(6,42,158,0.65)]">
             <h3 className="text-2xl font-bold text-white">Stay Updated</h3>
             <p className="mt-3 text-sm text-white/80">Stay updated with the latest WebDial features, call center insights, sales tips,<br /> and smarter ways to manage your team and leads.</p>
-            <form
-              className="mt-5 flex flex-col   sm:flex-row gap-4 max-w-lg mx-auto"
-              onSubmit={(event) => {
-                event.preventDefault();
-                setSubscribed(true);
-                toast.success("Thanks! You are subscribed to WebDial updates.");
-              }}
-            >
-              <input
-                type="email"
-                required
-                aria-label="Email address"
-                placeholder="Enter your email"
-                className="flex-1 px-5 py-3 rounded-sm bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-#d1d5db
--500 focus:border-#d1d5db
--500"
-              />
-              <button type="submit" className="zoom-glow rounded-lg bg-[#2ebf91] px-5 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90" style={{ backgroundColor: "#111827" }}>
-                {subscribed ? "Subscribed" : "Subscribe"}
-              </button>
-            </form>
+        <form
+  className="mt-5 flex flex-col sm:flex-row gap-4 max-w-lg mx-auto"
+  onSubmit={async (event) => {
+    event.preventDefault();
+
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+
+    const email = String(form.get("email") ?? "").trim();
+
+    if (!email) {
+      toast.error("Please enter your email address.");
+      return;
+    }
+
+    try {
+      await submitContactForm({
+        name: "",
+        email,
+        phone: "N/A",
+        company: "N/A",
+        service: "WebDial Newsletter Subscription",
+        message: "User subscribed to WebDial updates.",
+      });
+
+      formElement.reset();
+
+      setSubscribed(true);
+
+      toast.success(
+        "Thanks! You are subscribed to WebDial updates."
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to subscribe."
+      );
+    }
+  }}
+>
+  <input
+    type="email"
+    name="email"
+    required
+    aria-label="Email address"
+    placeholder="Enter your email"
+    className="flex-1 px-5 py-3 rounded-sm bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300"
+  />
+
+  <button
+    type="submit"
+    className="zoom-glow rounded-lg px-5 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+    style={{ backgroundColor: "#111827" }}
+  >
+    {subscribed ? "Subscribed" : "Subscribe"}
+  </button>
+</form>
           </div>
 
 
