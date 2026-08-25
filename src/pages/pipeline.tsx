@@ -127,7 +127,7 @@ function PipelinePage() {
             <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2"><Kanban className="size-7"/> Pipeline Stages</h1>
             <p className="opacity-90 mt-1 text-sm">Manage your sales pipeline and move deals forward</p>
           </div>
-          <div className="hidden sm:flex gap-2">
+          <div className="flex flex-wrap gap-2 mt-3 sm:mt-0">
             <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-semibold">Drag & Drop</span>
             <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-semibold">Database</span>
             <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-semibold">Real Leads</span>
@@ -141,7 +141,7 @@ function PipelinePage() {
       </div>
 
       <div className="bg-blue-500/10 rounded-xl p-4 flex flex-wrap items-center gap-3">
-        <div className="flex-1 min-w-[200px]">
+        <div className="flex-1 min-w-0 sm:min-w-[200px]">
           <div className="text-xs text-muted-foreground mb-1">Select List</div>
           <Select value={selectedList} onValueChange={setSelectedList}>
             <SelectTrigger className="bg-card"><SelectValue /></SelectTrigger>
@@ -151,7 +151,7 @@ function PipelinePage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex-1 min-w-[180px]">
+        <div className="flex-1 min-w-0 sm:min-w-[180px]">
           <div className="text-xs text-muted-foreground mb-1">Disposition</div>
           <Select value={selectedDisposition} onValueChange={setSelectedDisposition}>
             <SelectTrigger className="bg-card"><SelectValue /></SelectTrigger>
@@ -161,12 +161,12 @@ function PipelinePage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex-1 min-w-[220px] relative">
+        <div className="flex-1 min-w-0 sm:min-w-[220px] relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input className="pl-10 bg-card" placeholder="Phone / Name" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <Button className="bg-primary" size="icon" onClick={() => void loadData()}><Search className="size-4" /></Button>
-        <Button className="bg-blue-600" size="icon"><Bot className="size-4" /></Button>
+        <Button className="bg-primary shrink-0" size="icon" onClick={() => void loadData()} aria-label="Search pipeline"><Search className="size-4" /></Button>
+        <Button className="bg-blue-600 shrink-0" size="icon" aria-label="Pipeline assistant"><Bot className="size-4" /></Button>
       </div>
 
       <div className="flex gap-3 overflow-x-auto pb-4">

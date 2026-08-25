@@ -10,9 +10,9 @@ function PBXPage() {
           <h2 className="text-2xl font-bold">Web Dail PBX <span className="text-xs bg-white/20 px-2 py-1 rounded ml-2">BETA</span></h2>
         </div>
         <p className="opacity-90">Cloud-based phone system with extensions, IVR, call routing, and recording — all in the browser.</p>
-        <div className="mt-4 flex gap-2">
-          <Button variant="secondary">Activate PBX</Button>
-          <Button variant="ghost" className="text-white border border-white/30 hover:bg-white/10">Learn more</Button>
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <Button variant="secondary" className="w-full sm:w-auto">Activate PBX</Button>
+          <Button variant="ghost" className="w-full text-white border border-white/30 hover:bg-white/10 sm:w-auto">Learn more</Button>
         </div>
       </div>
 
@@ -33,7 +33,8 @@ function PBXPage() {
 
       <div className="bg-card rounded-xl border p-6">
         <h3 className="font-semibold mb-3">Extensions</h3>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
           <thead className="text-left text-xs text-muted-foreground border-b">
             <tr><th className="p-2">Ext</th><th className="p-2">Agent</th><th className="p-2">Status</th><th className="p-2">Today's calls</th></tr>
           </thead>
@@ -52,7 +53,8 @@ function PBXPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   );

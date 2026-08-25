@@ -26,7 +26,8 @@ function RecordingPage() {
         <h2 className="text-2xl font-bold flex items-center gap-2">Recordings <span className="text-xs bg-primary/15 text-primary px-2 py-0.5 rounded">BETA</span></h2>
       </div>
       <div className="bg-card rounded-xl border overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-sm">
           <thead className="text-left text-xs text-muted-foreground bg-muted/50">
             <tr><th className="p-3">Lead</th><th className="p-3">Phone</th><th className="p-3">Agent</th><th className="p-3">Duration</th><th className="p-3">Date</th><th className="p-3 text-right">Actions</th></tr>
           </thead>
@@ -46,7 +47,8 @@ function RecordingPage() {
             ))}
             {recs.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground"><Mic className="size-8 mx-auto mb-2 opacity-50"/>No recordings yet</td></tr>}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   );

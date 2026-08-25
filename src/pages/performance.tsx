@@ -94,7 +94,7 @@ function PerformancePage() {
             <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2"><TrendingUp className="size-7"/> Productivity & Performance</h1>
             <p className="opacity-90 mt-1 text-sm">Analyze individual call activity, dispositions, dialer presence, and time quality by month.</p>
           </div>
-          <div className="hidden sm:flex gap-2">
+          <div className="flex flex-wrap gap-2 mt-3 sm:mt-0">
             <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-semibold" style={{placeContent:"center"}}>Analytics</span>
             <Button size="sm" variant="secondary" className="gap-1"><Download className="size-3.5"/> Export</Button>
           </div>
@@ -112,7 +112,7 @@ function PerformancePage() {
           <button onClick={()=>setModern(true)} className={`px-3 py-1 rounded-full ${modern?"bg-primary text-primary-foreground":""}`}>Modern</button>
         </div>
         <Select value={agent} onValueChange={setAgent}>
-          <SelectTrigger className="w-48"><SelectValue/></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-48"><SelectValue/></SelectTrigger>
           <SelectContent>{members.map(m => <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>)}</SelectContent>
         </Select>
       </div>

@@ -114,7 +114,7 @@ function AuditPage() {
             <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2"><FileClock className="size-7"/> Audit Logs</h1>
             <p className="opacity-90 mt-1 text-sm">Track all system activities and changes</p>
           </div>
-          <div className="hidden sm:flex gap-2">
+          <div className="flex flex-wrap gap-2 mt-3 sm:mt-0">
             <Button size="sm" variant="secondary" className="gap-1">Activity Log</Button>
             <Button size="sm" variant="secondary" className="gap-1" onClick={exportCsv}><Download className="size-3.5"/> Export</Button>
           </div>

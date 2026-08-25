@@ -189,7 +189,7 @@ const seed = (): State => ({
     customDispositions: [],
     customFields: [{ key: "source", label: "Lead Source", type: "text" }],
     messageTemplates: [
-      { id: "mt1", name: "Welcome", body: "Hi {{name}}, thanks for reaching out to iFox!" },
+      { id: "mt1", name: "Welcome", body: "Hi {{name}}, thanks for reaching out to Webdial!" },
       { id: "mt2", name: "Follow up", body: "Hi {{name}}, following up on our earlier call." },
     ],
     storageUsedMb: 0, storageLimitMb: 5120,

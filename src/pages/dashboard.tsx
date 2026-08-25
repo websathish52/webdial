@@ -264,7 +264,7 @@ function Dashboard() {
       {/* <div className="flex items-center gap-4">
         <h2 className="text-xl font-semibold">Dashboard</h2>
         <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
-          <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-48"><SelectValue /></SelectTrigger>
           <SelectContent><SelectItem value="all">All Members</SelectItem>{members.map(m => <SelectItem key={m._id || m.id} value={m._id || m.id || ""}>{m.name}</SelectItem>)}</SelectContent>
         </Select>
       </div> */}

@@ -32,7 +32,7 @@ export default function AppLayout() {
 
       <main className="flex-1 min-w-0 flex flex-col h-screen">
         <Header onMenu={()=>setOpen(true)} dark={dark} onToggleDark={()=>setDark(d=>!d)} />
-        <div className="flex-1 overflow-y-auto p-4 lg:p-6">
+        <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 lg:p-6">
           <Outlet />
         </div>
       </main>
