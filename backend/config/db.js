@@ -6,10 +6,7 @@ async function connectDB() {
     throw new Error('MONGO_URI not set in env');
   }
   try {
-    await mongoose.connect(uri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect(uri);
     console.log('MongoDB connected');
   } catch (err) {
     console.error('MongoDB connection error:', err.message);
