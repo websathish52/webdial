@@ -25,6 +25,7 @@ const WhatsappMessage = require('../models/WhatsappMessage');
 const WhatsappTemplate = require('../models/WhatsappTemplate');
 const AuditEntry = require('../models/AuditEntry');
 const Settings = require('../models/Settings');
+const CompanySettings = require('../models/CompanySettings');
 const User = require('../models/User');
 const Company = require('../models/Company');
 
@@ -70,6 +71,8 @@ async function cascadeDeleteCompanyData(companyId, opts = {}) {
   results.whatsappMessages = await WhatsappMessage.deleteMany({ companyId }).catch(() => ({ deletedCount: 0 }));
   results.whatsappTemplates = await WhatsappTemplate.deleteMany({ companyId }).catch(() => ({ deletedCount: 0 }));
   results.auditEntries = await AuditEntry.deleteMany({ companyId }).catch(() => ({ deletedCount: 0 }));
+  results.companySettings = await CompanySettings.deleteMany({ companyId }).catch(() => ({ deletedCount: 0 }));
+  results.settingsByCompany = await Settings.deleteMany({ companyId }).catch(() => ({ deletedCount: 0 }));
 
   if (deleteUsers) {
     // Delete all non-superadmin members belonging to this company

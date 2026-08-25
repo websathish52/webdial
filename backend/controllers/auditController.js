@@ -79,6 +79,7 @@ exports.getAudit = async (req, res) => {
 
     const audit = await AuditEntry.find(filter)
       .populate('actor', 'name email')
+      .populate('companyId', 'companyName companyCode')
       .sort({ at: -1, createdAt: -1 })
       .limit(parseInt(limit, 10));
 

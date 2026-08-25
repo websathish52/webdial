@@ -7,7 +7,7 @@ import { FileClock, Download, Search } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
 
-type AuditItem = { _id?: string; id?: string; action: string; module: string; actor?: any; at?: string; ip?: string; details?: any };
+type AuditItem = { _id?: string; id?: string; action: string; module: string; actor?: any; companyId?: any; at?: string; ip?: string; details?: any };
 type MemberItem = { _id?: string; id?: string; name: string };
 
 function toDateInputValue(date?: string | Date) {
@@ -19,7 +19,7 @@ function toDateInputValue(date?: string | Date) {
 
 function AuditPage() {
   const me = useCurrentMember();
-  const isAdmin = me?.role === "SuperAdmin" || me?.role === "Admin";
+  const isAdmin = me?.role === "SuperAdmin" || me?.role === "Admin" || me?.role === "Master";
   const [audit, setAudit] = useState<AuditItem[]>([]);
   const [members, setMembers] = useState<MemberItem[]>([]);
   const [user, setUser] = useState("all");
@@ -57,6 +57,7 @@ function AuditPage() {
         actor: entry.actor || entry.actorName || entry.user || "System",
         at: entry.at || entry.createdAt || entry.timestamp,
         ip: entry.ip,
+        companyId: entry.companyId,
         details: entry.details,
       })));
       setMembers(nextMembers.map((member: any) => ({ _id: member._id || member.id, id: member._id || member.id, name: member.name || member.email || "Unknown" })));
@@ -180,6 +181,7 @@ function AuditPage() {
             <div key={a.id} className="relative">
               <div className="absolute -left-[29px] top-0 size-4 rounded-full bg-blue-500 ring-4 ring-blue-100"/>
               <div className="text-sm">{a.action} by <b>{typeof a.actor === "string" ? a.actor : a.actor?.name || "Unknown"}</b>{a.ip ? ` from IP: ${a.ip}` : ""}</div>
+              {a.companyId && <div className="text-xs font-medium text-blue-700">Company: {a.companyId.companyName || a.companyId}</div>}
               <div className="text-xs text-muted-foreground">On {new Date(a.at || Date.now()).toLocaleString(undefined, { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
               {a.details && <div className="mt-1 text-xs text-muted-foreground">{typeof a.details === "string" ? a.details : JSON.stringify(a.details)}</div>}
             </div>

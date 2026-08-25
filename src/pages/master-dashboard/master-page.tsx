@@ -28,6 +28,8 @@ type CompanyRow = {
   createdBy: string;
 }
 
+const deleteModules = ["Leads and CRM", "Lists and uploads", "Calls and recordings", "Campaigns and marketing", "Pipeline and tasks", "WhatsApp data", "Members and settings"];
+
 const emptyForm = {
   name: "",
   email: "",
@@ -46,6 +48,9 @@ function MasterPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SuperAdminRow | null>(null);
+  const [companyDeleteTarget, setCompanyDeleteTarget] = useState<CompanyRow | null>(null);
+  const [selectedDeleteModules, setSelectedDeleteModules] = useState(deleteModules);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [editTarget, setEditTarget] = useState<SuperAdminRow | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -156,6 +161,27 @@ function MasterPage() {
     }
   };
 
+  const openCompanyDelete = (company: CompanyRow) => {
+    setCompanyDeleteTarget(company);
+    setSelectedDeleteModules(deleteModules);
+    setDeleteConfirmation("");
+    setError("");
+  };
+
+  const handleCompanyDelete = async () => {
+    if (!companyDeleteTarget || selectedDeleteModules.length !== deleteModules.length || deleteConfirmation !== companyDeleteTarget.companyName) return;
+    try {
+      setSaving(true);
+      await api.deleteCompany(companyDeleteTarget._id);
+      setCompanyDeleteTarget(null);
+      await loadData();
+    } catch (err: any) {
+      setError(err.message || "Failed to delete company");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) return <div className="p-6">Loading master page...</div>;
 
   return (
@@ -219,9 +245,10 @@ function MasterPage() {
                         .map((company) => (
                           <span
                             key={company._id}
-                            className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full border border-blue-200 font-medium"
+                            className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full border border-blue-200 font-medium"
                           >
                             {company.companyName}
+                            <button type="button" title={`Delete ${company.companyName}`} onClick={() => openCompanyDelete(company)} className="text-destructive hover:text-red-800"><Trash2 className="size-3" /></button>
                           </span>
                         ))
                     : <span className="text-xs px-2 py-1 rounded-full font-semibold bg-muted text-muted-foreground">No company yet</span>}
@@ -279,6 +306,36 @@ function MasterPage() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancel</Button>
             <Button onClick={handleCreate} disabled={saving}>{saving ? "Creating..." : "Create"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!companyDeleteTarget} onOpenChange={(open) => !open && setCompanyDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Company and All Data</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p className="text-destructive font-medium">This is permanent. The company, members, files, and all module data will be deleted from MongoDB and storage.</p>
+            <div className="space-y-2 border rounded-lg p-3">
+              <div className="font-medium">Select all data to delete</div>
+              {deleteModules.map((item) => (
+                <label key={item} className="flex items-center gap-2">
+                  <input type="checkbox" checked={selectedDeleteModules.includes(item)} onChange={(event) => setSelectedDeleteModules((current) => event.target.checked ? [...current, item] : current.filter((value) => value !== item))} />
+                  {item}
+                </label>
+              ))}
+            </div>
+            <div>
+              <Label>Type {companyDeleteTarget?.companyName} to confirm</Label>
+              <Input value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} placeholder={companyDeleteTarget?.companyName} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCompanyDeleteTarget(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleCompanyDelete} disabled={saving || selectedDeleteModules.length !== deleteModules.length || deleteConfirmation !== companyDeleteTarget?.companyName}>
+              {saving ? "Deleting..." : "Permanently Delete All"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

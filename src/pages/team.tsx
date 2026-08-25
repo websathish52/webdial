@@ -10,6 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { UserPlus, Trash2, Search, X, Edit, ExternalLink, Plus, Download, Upload, Users2, ChevronDown, Settings, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
+const companyDeleteModules = ["Leads and CRM", "Lists and uploads", "Calls and recordings", "Campaigns and marketing", "Pipeline and tasks", "WhatsApp data", "Members and settings"];
+
 type BackendMember = {
   _id?: string;
   id?: string;
@@ -1494,6 +1496,9 @@ function AddCompanyDialog({
   const [status, setStatus] = useState("active");
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ _id: string; companyName: string } | null>(null);
+  const [selectedDeleteModules, setSelectedDeleteModules] = useState(companyDeleteModules);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
   const createCompany = async () => {
     if (!name.trim() || !code.trim()) {
@@ -1515,7 +1520,6 @@ function AddCompanyDialog({
   };
 
   const deleteCompany = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this company?")) return;
     setDeletingId(id);
     try {
       await api.deleteCompany(id);
@@ -1528,7 +1532,20 @@ function AddCompanyDialog({
     }
   };
 
+  const openDeleteCompany = (company: { _id: string; companyName: string }) => {
+    setDeleteTarget(company);
+    setSelectedDeleteModules(companyDeleteModules);
+    setDeleteConfirmation("");
+  };
+
+  const confirmDeleteCompany = async () => {
+    if (!deleteTarget || selectedDeleteModules.length !== companyDeleteModules.length || deleteConfirmation !== deleteTarget.companyName) return;
+    await deleteCompany(deleteTarget._id);
+    setDeleteTarget(null);
+  };
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl p-0 overflow-hidden bg-white">
         <div className="bg-[linear-gradient(135deg,#1D4ED8_0%,#2563EB_50%,#60A5FA_100%)] text-white p-4 flex items-center justify-between">
@@ -1556,7 +1573,7 @@ function AddCompanyDialog({
               {companies.map((company) => (
                 <div key={company._id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border border-gray-200 p-3">
                   <div><div className="font-medium text-gray-800">{company.companyName}</div><div className="text-xs text-gray-500">Code: {company.companyCode} • Status: {company.status}</div></div>
-                  <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => deleteCompany(company._id)} disabled={deletingId === company._id}>{deletingId === company._id ? "Deleting..." : "Delete"}</Button>
+                  <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => openDeleteCompany(company)} disabled={deletingId === company._id}>{deletingId === company._id ? "Deleting..." : "Delete"}</Button>
                 </div>
               ))}
             </div>
@@ -1564,6 +1581,25 @@ function AddCompanyDialog({
         </div>
       </DialogContent>
     </Dialog>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Delete Company and All Data</DialogTitle></DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p className="text-red-600 font-medium">This is permanent. All company data will be deleted from MongoDB and storage.</p>
+            <div className="space-y-2 border rounded-lg p-3">
+              <div className="font-medium">Select all data to delete</div>
+              {companyDeleteModules.map((item) => <label key={item} className="flex items-center gap-2"><input type="checkbox" checked={selectedDeleteModules.includes(item)} onChange={(event) => setSelectedDeleteModules((current) => event.target.checked ? [...current, item] : current.filter((value) => value !== item))} />{item}</label>)}
+            </div>
+            <div><Label>Type {deleteTarget?.companyName} to confirm</Label><Input value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} placeholder={deleteTarget?.companyName} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDeleteCompany} disabled={!!deletingId || selectedDeleteModules.length !== companyDeleteModules.length || deleteConfirmation !== deleteTarget?.companyName}>Permanently Delete All</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
