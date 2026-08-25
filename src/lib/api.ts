@@ -1,6 +1,22 @@
 import { store } from '@/lib/mock-store';
 
-export const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const rawApiUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+export const API_BASE = rawApiUrl || 'http://localhost:5000';
+
+function buildApiUrl(path: string) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const prefixedPath = normalizedPath.startsWith('/api') ? normalizedPath : `/api${normalizedPath}`;
+
+  if (!rawApiUrl) {
+    return `http://localhost:5000${prefixedPath}`;
+  }
+
+  if (rawApiUrl.endsWith('/api')) {
+    return `${rawApiUrl}${prefixedPath.replace(/^\/api/, '')}`;
+  }
+
+  return `${rawApiUrl}${prefixedPath}`;
+}
 
 // Turns a backend-relative file URL (e.g. "/uploads/companies/123/logo.png")
 // into an absolute URL the browser can actually load, regardless of which
@@ -9,7 +25,11 @@ export const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 export function resolveFileUrl(url?: string | null): string {
   if (!url) return '';
   if (/^https?:\/\//i.test(url)) return url;
-  return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
+
+  const normalizedUrl = url.startsWith('/') ? url : `/${url}`;
+  const baseForFiles = rawApiUrl ? rawApiUrl.replace(/\/api\/?$/, '') : API_BASE;
+
+  return `${baseForFiles}${normalizedUrl}`;
 }
 
 function clearAuthStorage() {
@@ -55,7 +75,7 @@ async function request(path: string, opts: RequestInit = {}) {
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const companyId = getSelectedCompanyId();
   if (companyId) headers['X-Company-Id'] = companyId;
-  const res = await fetch(API_BASE + path, { ...opts, headers });
+  const res = await fetch(buildApiUrl(path), { ...opts, headers });
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) {
       clearAuthStorage();
