@@ -268,7 +268,7 @@ export async function uploadFile(formData: FormData) {
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const companyId = getSelectedCompanyId();
   if (companyId) headers['X-Company-Id'] = companyId;
-  const res = await fetch(API_BASE + '/api/uploads', { method: 'POST', body: formData, headers });
+  const res = await fetch(buildApiUrl('/uploads'), { method: 'POST', body: formData, headers });
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) clearAuthStorage();
     const text = await res.text();
