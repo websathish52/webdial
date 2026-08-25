@@ -4,7 +4,7 @@ const settingsSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
     companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
-    recordCalls: { type: Boolean, default: true },
+    recordCalls: { type: Boolean, default: false },
     dialGap: { type: Number, default: 5 },
     customDispositions: [{ label: String, color: String }],
     customFields: [{ key: String, label: String, type: String }],

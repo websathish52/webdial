@@ -98,7 +98,7 @@ const routeAccess: Record<string, Member["role"][]> = {
   "/pbx": ["SuperAdmin", "Admin"],
    "/master": ["Master"],
   "/subscribe": ["SuperAdmin", "Admin"],
-  "/payment": ["Admin", "Manager", "Submanager", "Telecaller"],
+  "/payment": ["SuperAdmin", "Admin", "Manager", "Submanager", "Telecaller"],
   "/settings/general": ["SuperAdmin", "Admin", "Manager", "Submanager", "Telecaller"],
   "/settings/custom-status": ["SuperAdmin", "Admin", "Manager", "Submanager", "Telecaller"],
   "/settings/default-dialer": ["SuperAdmin", "Admin", "Manager", "Submanager", "Telecaller"],

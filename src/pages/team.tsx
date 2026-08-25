@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useCurrentMember, normalizeRole, defaultTelecallerPerms, fullPerms, defaultFlags, type Permissions, type MemberFlags } from "@/lib/mock-store";
+import { useCurrentMember, normalizeRole, defaultTelecallerPerms, fullPerms, defaultFlags, newTelecallerFlags, type Permissions, type MemberFlags } from "@/lib/mock-store";
 import api, { getSelectedCompanyId, setSelectedCompanyId } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1022,7 +1022,11 @@ function MemberDialog({
   const toggleList = (l: string) => setLists((prev) => (prev.includes(l) ? prev.filter((x) => x !== l) : [...prev, l]));
   const toggleTeam = (t: string) => setSelectedTeams((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
   const togglePerm = (k: keyof Permissions) => setPerms((p) => ({ ...p, [k]: !p[k] }));
-  const toggleFlag = (k: keyof MemberFlags) => setFlags((f) => ({ ...f, [k]: !f[k] }));
+  const toggleFlag = (k: keyof MemberFlags) => setFlags((f) => {
+    const nextValue = !f[k];
+    if (k === "allowAllListAccess") setLists(nextValue ? dialogScopedLists : []);
+    return { ...f, [k]: nextValue };
+  });
   const applyRoleDefaults = (r: string) => {
     setRole(r);
     if (r === "SuperAdmin" || r === "Admin") setPerms(fullPerms());
@@ -1044,13 +1048,13 @@ function MemberDialog({
     // When opening a new member dialog (not editing), pre-fill from whichever tag was
     // clicked to open this dialog.
     setSelectedTeams(member?.teams ?? (presetTeam ? [presetTeam] : []));
-    setFlags(isEditingAnySuperAdmin ? { ...defaultFlags(), ...fullPerms() } : (member?.flags ?? defaultFlags()));
+    setFlags(isEditingAnySuperAdmin ? { ...defaultFlags(), ...fullPerms() } : (!member && currentRole === "Telecaller" ? newTelecallerFlags() : (member?.flags ?? defaultFlags())));
     setPerms(isEditingAnySuperAdmin ? fullPerms() : (member?.permissions ?? defaultTelecallerPerms()));
     setCompanyId(member?.companyId ?? presetCompanyId ?? selectedCompanyId ?? null);
 
     // For Telecallers, SuperAdmins, or new members, default to all lists.
     // For other existing members, show their currently assigned lists.
-    if (isTelecaller || isEditingAnySuperAdmin || !member) {
+    if (isEditingAnySuperAdmin || !member) {
       setLists(dialogScopedLists);
     } else {
       setLists(member.lists ?? []);
@@ -1076,8 +1080,12 @@ function MemberDialog({
   useEffect(() => {
     if (!open) return;
     const currentRole = normalizeRole(member?.role);
-    if (currentRole === "Telecaller" || currentRole === "SuperAdmin" || !member) {
+    if (!member || currentRole === "SuperAdmin") {
       setLists(dialogScopedLists);
+    } else if (member.flags?.allowAllListAccess) {
+      setLists(dialogScopedLists);
+    } else {
+      setLists((member.lists || []).filter((list) => dialogScopedLists.includes(list)));
     }
   }, [open, member, dialogScopedLists]);
 

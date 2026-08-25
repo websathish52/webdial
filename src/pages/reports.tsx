@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, CartesianGrid } from "recharts";
-import { Download, Filter, BarChart3, Table as TableIcon, Calendar, ChevronRight } from "lucide-react";
+import { Download, Filter, BarChart3, Table as TableIcon, Calendar, ChevronRight, ChevronLeft } from "lucide-react";
 import * as XLSX from "xlsx";
 import api from "@/lib/api";
 import { toast } from "sonner";
@@ -78,6 +78,8 @@ function ReportsPage() {
   const [member, setMember] = useState<string>(me?.name ?? "all");
   const [dispo, setDispo] = useState<string>("all");
   const [modern, setModern] = useState(true);
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
 
   const from = new Date(); from.setDate(from.getDate() - 6);
   const filtered = calls.filter(c =>
@@ -86,6 +88,12 @@ function ReportsPage() {
     (dispo === "all" || c.disposition === dispo) &&
     new Date(c.calledAt) >= from
   );
+  const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
+  const pagedCalls = filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+
+  useEffect(() => {
+    setPage(1);
+  }, [list, member, dispo, rowsPerPage]);
 
   const dailyLabels = Array.from({length:7},(_,i)=>{const d=new Date(); d.setDate(d.getDate()-(6-i)); return d.toISOString().slice(5,10);});
   const daily = dailyLabels.map(label => ({
@@ -225,12 +233,14 @@ function ReportsPage() {
           </div>
           <div className="bg-card rounded-xl border p-4 sm:p-5 lg:col-span-2 min-w-0 overflow-hidden">
             <h3 className="font-semibold mb-3">Agent performance</h3>
-            <div className="h-[280px] w-full min-w-0">
+            <div className="w-full overflow-x-auto">
+            <div className="h-[280px] min-w-[680px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={agentData}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="name"/><YAxis/><Tooltip/>
                 <Bar dataKey="calls" fill="#10b981" radius={[6,6,0,0]}/>
               </BarChart>
             </ResponsiveContainer>
+            </div>
             </div>
           </div>
         </div>
@@ -255,7 +265,7 @@ function ReportsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(c => {
+              {pagedCalls.map(c => {
                 const dm = dispoMeta(c.disposition);
                 return (
                   <tr key={c.id} className="border-t">
@@ -274,7 +284,20 @@ function ReportsPage() {
             </tbody>
           </table>
         </div>
-        <div className="p-3 text-xs text-muted-foreground text-right">Showing {filtered.length} records</div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t p-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <span>Rows per page:</span>
+            <Select value={String(rowsPerPage)} onValueChange={(value) => setRowsPerPage(Number(value))}>
+              <SelectTrigger className="h-8 w-16 bg-background"><SelectValue /></SelectTrigger>
+              <SelectContent>{[5, 10, 25, 50].map((value) => <SelectItem key={value} value={String(value)}>{value}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-3">
+            <span>{filtered.length === 0 ? 0 : (page - 1) * rowsPerPage + 1}-{Math.min(page * rowsPerPage, filtered.length)} of {filtered.length}</span>
+            <Button variant="outline" size="sm" className="h-8 gap-1" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page === 1}><ChevronLeft className="size-3.5" /> Previous</Button>
+            <Button variant="outline" size="sm" className="h-8 gap-1" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page >= totalPages}>Next <ChevronRight className="size-3.5" /></Button>
+          </div>
+        </div>
       </div>
     </div>
   );

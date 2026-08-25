@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const plans = [
   { name: "Starter", price: "₹199", per: "user/month", popular: false, features: ["Up to 5 agents", "Auto dialer", "Lead CRM", "Basic reports", "Email support"] },
@@ -13,6 +14,7 @@ const plans = [
 ];
 
 function SubscribePage() {
+  const navigate = useNavigate();
   return (
     <div className="p-6 space-y-6">
       <div className="text-center max-w-2xl mx-auto">
@@ -25,7 +27,7 @@ function SubscribePage() {
             {p.popular && <div className="bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full inline-block mb-3">MOST POPULAR</div>}
             <h3 className="text-xl font-bold">{p.name}</h3>
             <div className="mt-3"><span className="text-4xl font-bold">{p.price}</span> <span className="text-sm text-muted-foreground">{p.per}</span></div>
-            <Button className={`w-full mt-4 ${p.popular ? "bg-primary" : ""}`} variant={p.popular ? "default" : "outline"}>Subscribe</Button>
+            <Button className={`w-full mt-4 ${p.popular ? "bg-primary" : ""}`} variant={p.popular ? "default" : "outline"} onClick={() => navigate(`/payment?plan=${encodeURIComponent(p.name)}&price=${p.price.replace(/[^0-9]/g, "")}`)}>Subscribe</Button>
             <ul className="mt-6 space-y-2 text-sm">
               {p.features.map(f => <li key={f} className="flex gap-2"><Check className="size-4 text-success shrink-0 mt-0.5"/>{f}</li>)}
             </ul>

@@ -13,6 +13,7 @@ export default function AppLayout() {
   });
   const [open, setOpen] = useState(false);
   const [apiLoading, setApiLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(1);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -20,7 +21,11 @@ export default function AppLayout() {
   }, [dark]);
   useEffect(() => { setOpen(false); }, [location.pathname]);
   useEffect(() => {
-    const handleLoading = (event: Event) => setApiLoading(Boolean((event as CustomEvent<{ loading?: boolean }>).detail?.loading));
+    const handleLoading = (event: Event) => {
+      const detail = (event as CustomEvent<{ loading?: boolean; progress?: number }>).detail;
+      setApiLoading(Boolean(detail?.loading));
+      if (typeof detail?.progress === "number") setLoadingProgress(detail.progress);
+    };
     window.addEventListener("ifox-api-loading", handleLoading);
     return () => window.removeEventListener("ifox-api-loading", handleLoading);
   }, []);
@@ -52,7 +57,7 @@ export default function AppLayout() {
         <div className="fixed inset-0 z-[100] grid place-items-center bg-background/70 backdrop-blur-sm" role="status" aria-live="polite">
           <div className="flex min-w-32 flex-col items-center gap-3 rounded-2xl border bg-card px-6 py-5 shadow-xl">
             <div className="size-10 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
-            <div className="text-sm font-semibold text-foreground">Loading 100%</div>
+            <div className="text-sm font-semibold text-foreground">Loading {loadingProgress}%</div>
           </div>
         </div>
       )}

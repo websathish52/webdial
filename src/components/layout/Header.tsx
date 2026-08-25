@@ -64,7 +64,7 @@ export default function Header({ onMenu, dark, onToggleDark }: { onMenu: () => v
   };
 
   return (
-    <header className="h-14 sm:h-16 bg-card border-b border-border px-3 sm:px-6 flex items-center justify-between gap-2">
+    <header className="sticky top-0 z-30 h-14 sm:h-16 bg-card border-b border-border px-3 sm:px-6 flex items-center justify-between gap-2">
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <button className="lg:hidden p-2 rounded-lg hover:bg-accent shrink-0" onClick={onMenu}><Menu className="size-5"/></button>
         <Phone className="hidden sm:block size-5 text-primary shrink-0" />

@@ -174,16 +174,16 @@ function AuditPage() {
         </Button>
       </div>
 
-      <div className="bg-card border rounded-xl p-6">
+      <div className="bg-card border rounded-xl p-4 sm:p-6 min-w-0 overflow-hidden">
         <div className="flex items-center gap-2 mb-4"><FileClock className="size-5 text-blue-600"/> <h3 className="font-semibold">Activity Timeline</h3></div>
-        <div className="relative pl-6 border-l-2 border-blue-200 space-y-6">
+        <div className="relative max-w-full overflow-x-auto pl-6 border-l-2 border-blue-200 space-y-6">
           {audit.map((a) => (
-            <div key={a.id} className="relative">
+            <div key={a.id} className="relative min-w-0 break-words">
               <div className="absolute -left-[29px] top-0 size-4 rounded-full bg-blue-500 ring-4 ring-blue-100"/>
               <div className="text-sm">{a.action} by <b>{typeof a.actor === "string" ? a.actor : a.actor?.name || "Unknown"}</b>{a.ip ? ` from IP: ${a.ip}` : ""}</div>
               {a.companyId && <div className="text-xs font-medium text-blue-700">Company: {a.companyId.companyName || a.companyId}</div>}
               <div className="text-xs text-muted-foreground">On {new Date(a.at || Date.now()).toLocaleString(undefined, { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
-              {a.details && <div className="mt-1 text-xs text-muted-foreground">{typeof a.details === "string" ? a.details : JSON.stringify(a.details)}</div>}
+              {a.details && <div className="mt-1 max-w-full break-words text-xs text-muted-foreground">{typeof a.details === "string" ? a.details : JSON.stringify(a.details)}</div>}
             </div>
           ))}
           {audit.length === 0 && <div className="text-sm text-muted-foreground">No activity in range.</div>}

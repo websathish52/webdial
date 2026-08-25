@@ -285,10 +285,10 @@ function Dashboard() {
       <div className="grid min-w-0 lg:grid-cols-2 gap-4">
         <div className="bg-card rounded-xl border p-4 sm:p-6 shadow min-w-0 overflow-hidden">
           <h3 className="font-semibold mb-2">Dispositions</h3>
-          <div className="h-[280px] w-full min-w-0">
+          <div className="h-[340px] w-full min-w-0">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={myDispositionsToday} dataKey="value" cx="50%" cy="42%" outerRadius="28%" innerRadius="14%">
+              <Pie data={myDispositionsToday} dataKey="value" cx="50%" cy="38%" outerRadius="34%" innerRadius="18%">
                 {myDispositionsToday.map((d, i) => <Cell key={i} fill={d.color} />)}
               </Pie>
               <Tooltip />

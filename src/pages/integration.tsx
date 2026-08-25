@@ -6,17 +6,19 @@ import { Label } from "@/components/ui/label";
 import api from "@/lib/api";
 import { toast } from "sonner";
 
-type IntegrationItem = { id: string; name: string; description: string; connected: boolean; icon: string };
+type IntegrationItem = { id: string; name: string; description: string; connected: boolean; icon: string; logoUrl?: string };
 
 function IntegrationPage() {
   const [items, setItems] = useState<IntegrationItem[]>([]);
   const [selected, setSelected] = useState<IntegrationItem | null>(null);
   const [configValue, setConfigValue] = useState("");
   const [loading, setLoading] = useState(true);
-  const icons = ["F", "I", "I", "J", "J", "T", "P", "Q", "9", "M", "H", "H", "S", "W", "G", "G", "A", "W", "I", "Z", "W"];
+  const logos: Record<string, string> = {
+    "facebook-lead-ads": "https://cdn.simpleicons.org/facebook/1877F2", indiamart: "https://cdn.simpleicons.org/indiamart/00AEEF", "indiamart-v2": "https://cdn.simpleicons.org/indiamart/00AEEF", justdial: "https://cdn.simpleicons.org/justdial/EF3D42", "justdial-v2": "https://cdn.simpleicons.org/justdial/EF3D42", tradeindia: "https://cdn.simpleicons.org/tradeindia/F58220", pabbly: "https://cdn.simpleicons.org/pabbly/FF6B35", quikr: "https://cdn.simpleicons.org/quikr/2F80ED", "99acres": "https://cdn.simpleicons.org/99acres/E63946", magicbricks: "https://cdn.simpleicons.org/magicbricks/EC1C24", hubspot: "https://cdn.simpleicons.org/hubspot/FF7A59", housing: "https://cdn.simpleicons.org/housing/EC5A29", shopify: "https://cdn.simpleicons.org/shopify/95BF47", woocommerce: "https://cdn.simpleicons.org/woocommerce/96588A", "google-sheet-sync": "https://cdn.simpleicons.org/googlesheets/34A853", "google-sheet-import": "https://cdn.simpleicons.org/googlesheets/34A853", "external-api": "https://cdn.simpleicons.org/fastapi/009688", webhook: "https://cdn.simpleicons.org/webhooks/4353FF", integrately: "https://cdn.simpleicons.org/integrately/FF6B35", zoho: "https://cdn.simpleicons.org/zoho/E42527", "web-forms": "https://cdn.simpleicons.org/googleforms/7248B9",
+  };
 
   useEffect(() => {
-    api.getIntegrations().then((data: any[]) => setItems((Array.isArray(data) ? data : []).map((item, index) => ({ ...item, id: item.provider, icon: icons[index] || "•" })))).catch((err: any) => toast.error(err?.message || "Could not load integrations")).finally(() => setLoading(false));
+    api.getIntegrations().then((data: any[]) => setItems((Array.isArray(data) ? data : []).map((item) => ({ ...item, id: item.provider, icon: item.name?.charAt(0) || "•", logoUrl: logos[item.provider] })))).catch((err: any) => toast.error(err?.message || "Could not load integrations")).finally(() => setLoading(false));
   }, []);
 
   const toggleItem = (item: IntegrationItem) => {
@@ -42,7 +44,7 @@ function IntegrationPage() {
         {items.map(i => (
           <div key={i.id} className="bg-card rounded-xl border p-5 min-w-0">
             <div className="flex items-start justify-between mb-3">
-              <div className="size-11 rounded-xl bg-primary/10 text-primary grid place-items-center text-xl font-bold">{i.icon}</div>
+              <div className="size-11 rounded-xl bg-primary/10 text-primary grid place-items-center text-xl font-bold">{i.logoUrl ? <img src={i.logoUrl} alt={`${i.name} logo`} className="size-7 object-contain" /> : i.icon}</div>
               {i.connected && <span className="text-xs bg-success/20 text-success px-2 py-1 rounded">Connected</span>}
             </div>
             <h3 className="font-semibold">{i.name}</h3>

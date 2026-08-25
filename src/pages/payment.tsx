@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import {
   CreditCard, Package, Users, Calendar, FileText, CheckCircle2, ShieldCheck, Search,
 } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { BRAND, HeroBanner, SettingsTopBar } from "./settings/_shared";
 import api from "@/lib/api";
 import { toast } from "sonner";
@@ -16,29 +20,43 @@ type Invoice = {
 };
 
 export default function PaymentPage() {
+  const [searchParams] = useSearchParams();
+  const plan = searchParams.get("plan") || "Starter";
+  const pricePerUser = Number(searchParams.get("price")) || 199;
   const [renewal, setRenewal] = useState("monthly");
   const [users, setUsers] = useState(4);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [paying, setPaying] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null);
+  const [profile, setProfile] = useState({ company: "", name: "", email: "", phone: "" });
+  const cycleMultiplier = renewal === "yearly" ? 12 : renewal === "halfyearly" ? 6 : 1;
+  const totalAmount = pricePerUser * users * cycleMultiplier;
 
   useEffect(() => {
-    // FIXME: Replace getCallLogs with a real getInvoices API call when available.
-    // Using getCallLogs as a placeholder to demonstrate backend connection.
-    api.getCallLogs({ limit: 20 })
-      .then(res => {
-        const fetchedInvoices = (res?.calls || []).map((call: any, i: number) => ({
-          _id: call._id || i.toString(),
-          date: new Date(call.calledAt).toLocaleString('en-IN'),
-          user: call.agent?.name || 'Unknown',
-          amount: `${(call.duration * 0.5).toFixed(2)} INR`,
-          expiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-          status: i % 3 === 0 ? 'Deleted' : 'Paid',
-        }));
-        setInvoices(Array.isArray(fetchedInvoices) ? fetchedInvoices : []);
-      })
+    api.getPayments()
+      .then((payments: any[]) => setInvoices((Array.isArray(payments) ? payments : []).map((payment) => ({
+        _id: payment._id,
+        date: new Date(payment.createdAt).toLocaleString('en-IN'),
+        user: payment.users,
+        amount: `₹${payment.amount.toLocaleString('en-IN')}`,
+        expiry: payment.expiry ? new Date(payment.expiry).toLocaleDateString('en-IN') : '-',
+        status: payment.status,
+      }))))
       .catch(err => toast.error(err.message || "Could not load invoices."))
       .finally(() => setLoading(false));
   }, []);
+
+  const startPayment = async () => {
+    setPaying(true);
+    try {
+      const payment = await api.createPayment({ plan, pricePerUser, users, cycle: renewal, profile });
+      setPendingPaymentId(payment?._id || null);
+      setPaymentOpen(true);
+    } catch (err: any) { toast.error(err?.message || "Could not create payment"); }
+    finally { setPaying(false); }
+  };
 
   return (
     <div className="min-h-screen bg-[#f5f5f5]">
@@ -66,9 +84,9 @@ export default function PaymentPage() {
           <div className="space-y-6">
             {/* Summary cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              <SummaryCard title="Cycle" value="WebDial Enterprise Basic Monthly" />
-              <SummaryCard title="Expiry" value="Jul 31, 2026 1:43 PM" />
-              <SummaryCard title="Member Limit" value="4" extra={<span className="text-xs" style={{ color: BRAND }}>● 4 added users</span>} />
+              <SummaryCard title="Plan" value={`${plan} · ₹${pricePerUser}/user`} />
+              <SummaryCard title="Cycle" value={renewal} />
+              <SummaryCard title="Member Limit" value={String(users)} extra={<span className="text-xs" style={{ color: BRAND }}>● {users} selected users</span>} />
             </div>
 
             {/* Purchase plan */}
@@ -88,8 +106,8 @@ export default function PaymentPage() {
                   style={{ borderColor: BRAND }}
                 >
                   <div className="absolute top-4 right-4 w-4 h-4 rounded-full" style={{ backgroundColor: BRAND }} />
-                  <div className="font-bold text-gray-900">Sim Based Dialer</div>
-                  <div className="text-sm text-gray-600 mb-2">Affordable, reliable SIM calling</div>
+                  <div className="font-bold text-gray-900">{plan} Plan</div>
+                  <div className="text-sm text-gray-600 mb-2">₹{pricePerUser} per user / month</div>
                   <ul className="text-xs text-gray-600 space-y-1 list-disc pl-4">
                     <li>Android phone + SIM calling</li>
                     <li>Works offline over cellular</li>
@@ -116,8 +134,8 @@ export default function PaymentPage() {
               </div>
 
               <div className="mt-8 text-center">
-                <div className="text-3xl font-bold text-gray-900">Rs 0<span className="text-sm text-gray-500">/user</span></div>
-                <div className="text-sm text-gray-500">You will be charged Rs 0.00 (+Taxes) per month</div>
+                <div className="text-3xl font-bold text-gray-900">₹{totalAmount.toLocaleString('en-IN')}<span className="text-sm text-gray-500"> total</span></div>
+                <div className="text-sm text-gray-500">₹{pricePerUser} × {users} users × {cycleMultiplier} month(s)</div>
 
                 <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
                   <span className="text-sm text-gray-600">Choose No of Users</span>
@@ -141,10 +159,12 @@ export default function PaymentPage() {
                 </div>
 
                 <button
-                  className="mt-6 px-10 py-2 rounded-md text-white text-sm font-semibold"
+                  className="mt-6 px-10 py-2 rounded-md text-white text-sm font-semibold disabled:opacity-50"
                   style={{ backgroundColor: BRAND }}
+                  onClick={() => void startPayment()}
+                  disabled={paying}
                 >
-                  PAY
+                  {paying ? "Preparing..." : "PAY"}
                 </button>
               </div>
             </div>
@@ -204,21 +224,12 @@ export default function PaymentPage() {
           <div className="bg-white rounded-xl shadow-sm p-6 h-fit">
             <h3 className="font-bold text-gray-900 mb-4">Payment Profile</h3>
             <div className="space-y-3">
-              <ProfileField label="Company Name *" value="Web" />
+              <ProfileField label="Company Name *" value={profile.company} onChange={(value) => setProfile({ ...profile, company: value })} />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <ProfileField label="First Name *" value="Sidhartha" />
-                <ProfileField label="Last Name *" value="Mohan" />
+                <ProfileField label="Name *" value={profile.name} onChange={(value) => setProfile({ ...profile, name: value })} />
+                <ProfileField label="Phone *" value={profile.phone} onChange={(value) => setProfile({ ...profile, phone: value })} />
               </div>
-              <ProfileField label="E-mail *" value="sidhartha@ifoxad.com" />
-              <ProfileField label="Phone *" value="+919884339436" />
-              <ProfileField label="Address *" value="Flat 'F', 2nd Floor, 11th Sector Park, Plot #922, 66th St, Sector 11, K. K. Nagar" />
-              <ProfileField label="State *" value="Tamil Nadu" />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <ProfileField label="City *" value="Chennai" />
-                <ProfileField label="Pincode *" value="600078" />
-              </div>
-              <ProfileField label="Country *" value="India" />
-              <ProfileField label="GSTIN" value="33EAAPB9400H1Z9" />
+              <ProfileField label="E-mail *" value={profile.email} onChange={(value) => setProfile({ ...profile, email: value })} />
             </div>
             <button
               className="mt-4 w-full py-2.5 rounded-md text-white font-semibold"
@@ -229,6 +240,16 @@ export default function PaymentPage() {
           </div>
         </div>
       </div>
+      <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
+        <DialogContent className="max-w-sm text-center">
+          <DialogHeader><DialogTitle>Pay with GPay / UPI</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Scan this dummy QR or pay to the UPI ID below.</p>
+          <img className="mx-auto size-56 rounded-lg border p-2" alt="UPI payment QR" src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(`upi://pay?pa=hduke1439@okaxis&pn=WebDial&am=${totalAmount}&cu=INR`)}`} />
+          <div className="rounded-lg bg-muted p-3 font-mono text-sm">hduke1439@okaxis</div>
+          <div className="text-lg font-bold">₹{totalAmount.toLocaleString('en-IN')}</div>
+          <DialogFooter><Button onClick={async () => { if (pendingPaymentId) await api.markPaymentPaid(pendingPaymentId); setPaymentOpen(false); toast.success("Payment marked as paid"); window.location.reload(); }}>I completed payment</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -243,11 +264,11 @@ function SummaryCard({ title, value, extra }: { title: string; value: string; ex
   );
 }
 
-function ProfileField({ label, value }: { label: string; value: string }) {
+function ProfileField({ label, value, onChange }: { label: string; value: string; onChange?: (value: string) => void }) {
   return (
     <div className="space-y-1">
       <label className="text-xs text-gray-500">{label}</label>
-      <input defaultValue={value} className="w-full border-b py-1.5 text-sm outline-none focus:border-b-2" />
+      <input value={value} onChange={(event) => onChange?.(event.target.value)} className="w-full border-b py-1.5 text-sm outline-none focus:border-b-2" />
     </div>
   );
 }

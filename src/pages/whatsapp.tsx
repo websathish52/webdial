@@ -11,7 +11,7 @@ import { Send, MessageCircle, Search, Phone } from "lucide-react";
 import { toast } from "sonner";
 
 type Search = { phone?: string; name?: string };
-type MessageTemplate = { _id?: string; id?: string; name: string; body: string; attachmentUrl?: string; attachmentName?: string };
+type MessageTemplate = { _id?: string; id?: string; name: string; desc?: string; body: string; attachmentUrl?: string; attachmentName?: string; attachmentType?: string };
 
 function WhatsappPage() {
   const q = useAppSearch();
@@ -76,6 +76,7 @@ function WhatsappPage() {
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [text, setText] = useState("");
   const [selectedAttachment, setSelectedAttachment] = useState<MessageTemplate | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
 
   useEffect(() => {
     if (q.phone) setActive({ phone: q.phone, name: q.name || q.phone });
@@ -93,6 +94,7 @@ function WhatsappPage() {
     const template = templates.find((item) => (item._id || item.id) === templateId);
     if (template) {
       setText(templateText(template));
+      setSelectedTemplate(template);
       setSelectedAttachment(template.attachmentUrl ? template : null);
     }
   };
@@ -183,6 +185,8 @@ function WhatsappPage() {
                   <Button onClick={send} className="bg-blue-600 hover:bg-blue-700 gap-1"><Send className="size-4"/> Send</Button>
                 </div>
                 {selectedAttachment?.attachmentUrl && <a href={resolveFileUrl(selectedAttachment.attachmentUrl)} target="_blank" rel="noreferrer" className="flex items-center gap-2 truncate text-xs text-blue-700 hover:underline"><span>Attachment:</span> {selectedAttachment.attachmentName || "Open file"}</a>}
+                {selectedTemplate?.desc && <div className="text-xs text-muted-foreground">{selectedTemplate.desc}</div>}
+                {selectedAttachment?.attachmentUrl && selectedAttachment.attachmentType?.startsWith("image/") && <img src={resolveFileUrl(selectedAttachment.attachmentUrl)} alt={selectedAttachment.attachmentName || "Template attachment"} className="max-h-32 max-w-full rounded-lg object-contain" />}
               </div>
             </>
           ) : (
@@ -221,6 +225,8 @@ function WhatsappPage() {
               {templates.length > 0 && <Select onValueChange={applyTemplate}><SelectTrigger className="bg-background text-xs"><SelectValue placeholder="Choose message template" /></SelectTrigger><SelectContent>{templates.map(t => <SelectItem key={t._id || t.id} value={t._id || t.id || t.name}>{t.name}{t.attachmentName ? " + file" : ""}</SelectItem>)}</SelectContent></Select>}
               <div className="flex gap-2"><Input placeholder="Type a message" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} className="bg-background min-w-0" /><Button onClick={send} className="bg-blue-600 hover:bg-blue-700 gap-1 shrink-0"><Send className="size-4" /><span className="hidden sm:inline">Send</span></Button></div>
               {selectedAttachment?.attachmentUrl && <a href={resolveFileUrl(selectedAttachment.attachmentUrl)} target="_blank" rel="noreferrer" className="flex items-center gap-2 truncate text-xs text-blue-700 hover:underline"><span>Attachment:</span> {selectedAttachment.attachmentName || "Open file"}</a>}
+              {selectedTemplate?.desc && <div className="text-xs text-muted-foreground">{selectedTemplate.desc}</div>}
+              {selectedAttachment?.attachmentUrl && selectedAttachment.attachmentType?.startsWith("image/") && <img src={resolveFileUrl(selectedAttachment.attachmentUrl)} alt={selectedAttachment.attachmentName || "Template attachment"} className="max-h-32 max-w-full rounded-lg object-contain" />}
             </div>
           </div>
         </DialogContent>

@@ -3,11 +3,39 @@ import { store } from '@/lib/mock-store';
 const rawApiUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 export const API_BASE = rawApiUrl || 'http://localhost:5000';
 let activeRequests = 0;
+let loadingTimer: number | null = null;
+let loadingHideTimer: number | null = null;
+let loadingStartedAt = 0;
+
+function emitApiLoading(loading: boolean, progress = loading ? 1 : 100) {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('ifox-api-loading', { detail: { loading, progress } }));
+  }
+}
 
 function setApiLoading(delta: 1 | -1) {
   activeRequests = Math.max(0, activeRequests + delta);
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('ifox-api-loading', { detail: { loading: activeRequests > 0 } }));
+  if (delta === 1 && activeRequests === 1) {
+    if (loadingHideTimer && typeof window !== 'undefined') window.clearTimeout(loadingHideTimer);
+    loadingHideTimer = null;
+    loadingStartedAt = Date.now();
+    emitApiLoading(true, 1);
+    if (typeof window !== 'undefined') {
+      loadingTimer = window.setInterval(() => {
+        const elapsed = Date.now() - loadingStartedAt;
+        emitApiLoading(true, Math.min(95, Math.max(1, Math.round(1 + elapsed / 120))));
+      }, 100);
+    }
+  } else if (delta === -1 && activeRequests === 0) {
+    if (loadingTimer && typeof window !== 'undefined') window.clearInterval(loadingTimer);
+    loadingTimer = null;
+    emitApiLoading(true, 100);
+    if (typeof window !== 'undefined') {
+      loadingHideTimer = window.setTimeout(() => {
+        loadingHideTimer = null;
+        emitApiLoading(false, 100);
+      }, 180);
+    }
   }
 }
 
@@ -77,7 +105,8 @@ export function setSelectedCompanyId(companyId: string | null) {
 }
 
 async function request(path: string, opts: RequestInit = {}) {
-  setApiLoading(1);
+  const showLoader = String(opts.method || 'GET').toUpperCase() !== 'GET';
+  if (showLoader) setApiLoading(1);
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (opts.body && !(opts.body instanceof FormData)) headers['Content-Type'] = 'application/json';
   const token = getStoredToken();
@@ -98,7 +127,7 @@ async function request(path: string, opts: RequestInit = {}) {
     }
     return res.json().catch(() => null);
   } finally {
-    setApiLoading(-1);
+    if (showLoader) setApiLoading(-1);
   }
 }
 
@@ -441,6 +470,9 @@ export async function getIntegrations() { return await request('/api/integration
 export async function updateIntegration(provider: string, data: any) { return await request(`/api/integrations/${provider}`, { method: 'PUT', body: JSON.stringify(data) }); }
 export async function getPbxSettings() { return await request('/api/pbx'); }
 export async function updatePbxSettings(data: any) { return await request('/api/pbx', { method: 'PUT', body: JSON.stringify(data) }); }
+export async function getPayments() { return await request('/api/payments'); }
+export async function createPayment(data: any) { return await request('/api/payments', { method: 'POST', body: JSON.stringify(data) }); }
+export async function markPaymentPaid(id: string) { return await request(`/api/payments/${id}/paid`, { method: 'PUT' }); }
 
 export default {
   login, me, changePassword, registerUser,
@@ -466,4 +498,5 @@ export default {
   getMessageTemplates, createMessageTemplate, updateMessageTemplate, deleteMessageTemplate, uploadMessageTemplateAttachment,
   getStorageUsage,
   getIntegrations, updateIntegration, getPbxSettings, updatePbxSettings,
+  getPayments, createPayment, markPaymentPaid,
 };

@@ -7,6 +7,11 @@ const { requireRole } = require('../middleware/roles');
 // Get all members (authenticated users can read the team list)
 router.get('/', protect, getMembers);
 
+// Settings routes must be registered before /:id, otherwise "settings" is
+// interpreted as a member id by Express.
+router.get('/settings/me', protect, getSettings);
+router.put('/settings/me', protect, updateSettings);
+
 // Get single member
 router.get('/:id', protect, getMember);
 
@@ -18,9 +23,5 @@ router.put('/:id/password', protect, requireRole('superadmin'), updateMemberPass
 
 // Delete member (superadmin only)
 router.delete('/:id', protect, requireRole('superadmin'), deleteMember);
-
-// Settings routes
-router.get('/settings/me', protect, getSettings);
-router.put('/settings/me', protect, updateSettings);
 
 module.exports = router;

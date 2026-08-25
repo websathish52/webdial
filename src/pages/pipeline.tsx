@@ -144,8 +144,8 @@ function PipelinePage() {
         </div>
       </div>
 
-      <div className="bg-blue-500/10 rounded-xl p-4 flex flex-wrap items-center gap-3">
-        <div className="flex-1 min-w-0 sm:min-w-[200px]">
+      <div className="bg-blue-500/10 rounded-xl p-3 sm:p-4 grid grid-cols-1 sm:flex sm:flex-wrap items-stretch sm:items-center gap-3">
+        <div className="min-w-0 sm:flex-1 sm:min-w-[200px]">
           <div className="text-xs text-muted-foreground mb-1">Select List</div>
           <Select value={selectedList} onValueChange={setSelectedList}>
             <SelectTrigger className="bg-card"><SelectValue /></SelectTrigger>
@@ -155,7 +155,7 @@ function PipelinePage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex-1 min-w-0 sm:min-w-[180px]">
+        <div className="min-w-0 sm:flex-1 sm:min-w-[180px]">
           <div className="text-xs text-muted-foreground mb-1">Disposition</div>
           <Select value={selectedDisposition} onValueChange={setSelectedDisposition}>
             <SelectTrigger className="bg-card"><SelectValue /></SelectTrigger>
@@ -165,12 +165,12 @@ function PipelinePage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex-1 min-w-0 sm:min-w-[220px] relative">
+        <div className="min-w-0 sm:flex-1 sm:min-w-[220px] relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input className="pl-10 bg-card" placeholder="Phone / Name" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <Button className="bg-primary shrink-0" size="icon" onClick={() => void loadData()} aria-label="Search pipeline"><Search className="size-4" /></Button>
-        <Button className="bg-blue-600 shrink-0" size="icon" aria-label="Pipeline assistant"><Bot className="size-4" /></Button>
+        <Button className="bg-primary w-full sm:w-9 shrink-0" size="icon" onClick={() => void loadData()} aria-label="Search pipeline"><Search className="size-4" /></Button>
+        <Button className="bg-blue-600 w-full sm:w-9 shrink-0" size="icon" aria-label="Pipeline assistant"><Bot className="size-4" /></Button>
       </div>
 
       <div className="flex gap-3 overflow-x-auto overscroll-x-contain pb-4 touch-pan-x snap-x snap-mandatory">
@@ -252,7 +252,7 @@ function PipelinePage() {
                     .slice(0, 2) || 'U';
 
                   return (
-                    <div key={d._id || d.id} draggable onDragStart={(e) => onDragStart(e, { type: d.isTemp ? 'lead' : 'deal', id: d.isTemp ? d.sourceLeadId || '' : d._id || d.id || '', list: d.list })} className="bg-background border rounded-lg p-3 cursor-move hover:shadow-md transition">
+                    <div key={d._id || d.id} draggable onDragStart={(e) => onDragStart(e, { type: d.isTemp ? 'lead' : 'deal', id: d.isTemp ? d.sourceLeadId || '' : d._id || d.id || '', list: d.list })} className="min-h-28 bg-background border rounded-lg p-3 cursor-grab active:cursor-grabbing touch-manipulation hover:shadow-md transition">
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <div className="text-[10px] font-bold uppercase text-white px-2 py-0.5 rounded inline-block" style={{ background: dispositionColor }}>
                           {dispositionLabel}

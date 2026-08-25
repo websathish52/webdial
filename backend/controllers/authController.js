@@ -50,6 +50,8 @@ exports.login = async (req, res) => {
       lists: Array.isArray(user.lists) ? user.lists : [],
       teams: Array.isArray(user.teams) ? user.teams : [],
       companyId: user.companyId || null,
+      permissions: user.permissions,
+      flags: user.flags,
     },
   });
 };
@@ -137,6 +139,8 @@ exports.me = async (req, res) => {
       lists: Array.isArray(req.user.lists) ? req.user.lists : [],
       teams: Array.isArray(req.user.teams) ? req.user.teams : [],
       companyId: req.user.companyId || null,
+      permissions: req.user.permissions,
+      flags: req.user.flags,
     },
   });
 };

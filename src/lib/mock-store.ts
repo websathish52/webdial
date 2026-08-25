@@ -52,6 +52,12 @@ export const defaultFlags = (): MemberFlags => ({
   callLogAccess: true, disableExportList: false, disableContactDelete: false,
   markAttendance: false, captureLocation: false, capturePhoto: false, enableSessionLock: false,
 });
+export const newTelecallerFlags = (): MemberFlags => ({
+  accessCrmOnApp: false, modifyMember: false, skipCall: false, deleteList: false,
+  mobileRecording: false, enableWhatsapp: true, allowAllListAccess: true,
+  callLogAccess: true, disableExportList: false, disableContactDelete: false,
+  markAttendance: false, captureLocation: false, capturePhoto: false, enableSessionLock: false,
+});
 export const defaultTelecallerPerms = (): Permissions => ({
   crm: true, team: false, whatsapp: true, reports: true, tools: true, marketing: false,
   pbx: false, subscribe: false, payment: true, integration: false, recording: false, settings: true,
@@ -361,7 +367,7 @@ export const store = {
 };
 
 // allow setting session from backend auth during migration from mock data
-export const setBackendSession = (user: { id: string; name: string; email: string; role?: string; username?: string; teams?: string[]; lists?: string[]; companyId?: string }) => {
+export const setBackendSession = (user: { id: string; name: string; email: string; role?: string; username?: string; teams?: string[]; lists?: string[]; companyId?: string; permissions?: Permissions; flags?: MemberFlags }) => {
   const exists = state.members.find(m => m.id === user.id);
   const member = exists
     ? {
@@ -373,6 +379,8 @@ export const setBackendSession = (user: { id: string; name: string; email: strin
         companyId: user.companyId || exists.companyId,
         teams: Array.isArray(user.teams) ? user.teams : exists.teams,
         lists: Array.isArray(user.lists) ? user.lists : exists.lists,
+        permissions: user.permissions ? { ...exists.permissions, ...user.permissions } : exists.permissions,
+        flags: user.flags ? { ...(exists.flags || defaultFlags()), ...user.flags } : exists.flags,
       }
     : {
         id: user.id,
@@ -386,7 +394,7 @@ export const setBackendSession = (user: { id: string; name: string; email: strin
         teams: Array.isArray(user.teams) ? user.teams : [],
         lists: Array.isArray(user.lists) ? user.lists : [],
         permissions: defaultTelecallerPerms(),
-        flags: defaultFlags(),
+        flags: user.flags ? { ...defaultFlags(), ...user.flags } : defaultFlags(),
       };
   state = { ...state, members: [member, ...state.members.filter(m => m.id !== user.id)], session: { memberId: user.id } };
   notify();

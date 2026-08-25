@@ -77,7 +77,7 @@ function DialerPage() {
   const [autoAdvance, setAutoAdvance] = useState(false);
   const [dispoOpen, setDispoOpen] = useState(false);
   const [pendingDuration, setPendingDuration] = useState(0);
-  const [recording, setRecording] = useState(true);
+  const [recording, setRecording] = useState(false);
   const [recordingUrl, setRecordingUrl] = useState<string | undefined>();
   const timerRef = useRef<number | null>(null);
   const gapRef = useRef<number | null>(null);
@@ -88,6 +88,7 @@ function DialerPage() {
   const loadDialerSettings = async () => {
     try {
       const settings = await api.getSettings();
+      if (typeof settings?.recordCalls === "boolean") setRecording(settings.recordCalls);
       const savedGap = Number(settings?.dialGap);
       if (Number.isFinite(savedGap) && savedGap >= 0) {
         setGap(savedGap);
@@ -353,7 +354,14 @@ function DialerPage() {
             <SelectTrigger className="w-full sm:w-56 bg-card"><SelectValue /></SelectTrigger>
             <SelectContent>{availableLists.map((l: string) => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
           </Select>
-          <Button variant={recording ? "default" : "outline"} size="sm" className={`gap-1 ${recording ? "bg-primary" : ""}`} onClick={() => setRecording((r) => !r)}>
+          <Button variant={recording ? "default" : "outline"} size="sm" className={`gap-1 ${recording ? "bg-primary" : ""}`} onClick={() => {
+            const nextRecording = !recording;
+            setRecording(nextRecording);
+            void api.updateSettings({ recordCalls: nextRecording }).catch((err: any) => {
+              setRecording(recording);
+              toast.error(err?.message || "Could not save recording preference");
+            });
+          }}>
             {recording ? <Mic className="size-3.5" /> : <MicOff className="size-3.5" />}
             <span className="hidden sm:inline">Rec {recording ? "ON" : "OFF"}</span>
           </Button>

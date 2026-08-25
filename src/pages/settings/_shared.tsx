@@ -14,8 +14,8 @@ export function SettingsTopBar({ title }: { title: string }) {
           <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2"><SettingsIcon className="size-7"/> {title}</h1>
           <p className="opacity-90 mt-1 text-sm">Manage your organization and account settings</p>
         </div>
-        <div className="hidden sm:flex gap-2">
-          <button onClick={() => navigate(-1)} className="bg-white/20 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5">
+        <div className="flex gap-2">
+          <button onClick={() => navigate(-1)} className="bg-white/20 px-3 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5">
             <ArrowLeft className="size-3.5"/> Back
           </button>
         </div>
