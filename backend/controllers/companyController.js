@@ -1,7 +1,7 @@
 const Company = require('../models/Company');
 const User = require('../models/User');
 const logAudit = require('../utils/auditLogger');
-const { cascadeDeleteCompanyData } = require('../utils/cascadeDeleteCompany');
+const { cascadeDeleteCompanyData } = require('../utils/Cascadedeletecompany');
 
 exports.getCompanies = async (req, res) => {
   try {

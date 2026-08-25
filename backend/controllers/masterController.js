@@ -1,7 +1,7 @@
 const User = require('../models/User');
 const Company = require('../models/Company');
 const logAudit = require('../utils/auditLogger');
-const { cascadeDeleteCompanyData } = require('../utils/cascadeDeleteCompany');
+const { cascadeDeleteCompanyData } = require('../utils/Cascadedeletecompany');
 
 // GET all SuperAdmins along with their company details (if any)
 exports.getSuperAdmins = async (req, res) => {
