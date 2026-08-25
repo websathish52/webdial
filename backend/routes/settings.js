@@ -54,6 +54,7 @@ router.delete('/custom-statuses/:key', settingsController.deleteCustomStatus);
 // Message Templates
 router.get('/message-templates', settingsController.getMessageTemplates);
 router.post('/message-templates', settingsController.createMessageTemplate);
+router.post('/message-templates/attachment', handleUpload('file'), settingsController.uploadMessageTemplateAttachment);
 router.put('/message-templates/:id', settingsController.updateMessageTemplate);
 router.delete('/message-templates/:id', settingsController.deleteMessageTemplate);
 

@@ -90,6 +90,8 @@ app.use('/api/crm', require('./routes/crm'));
 app.use('/api/dialer', require('./routes/dialer'));
 app.use('/api/members', require('./routes/members'));
 app.use('/api/company', require('./routes/company'));
+app.use('/api/integrations', require('./routes/integration'));
+app.use('/api/pbx', require('./routes/pbx'));
 app.use('/api/marketing', require('./routes/marketing'));
 app.use('/api/pipeline', require('./routes/pipeline'));
 app.use('/api/tasks', require('./routes/tasks'));

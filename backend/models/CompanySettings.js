@@ -41,7 +41,16 @@ const CompanySettingsSchema = new mongoose.Schema({
   },
   defaultDialer: { type: String, default: 'Phone Dialer' },
   customStatuses: [{ key: String, name: String, description: String, color: String }],
-  messageTemplates: [{ name: String, desc: String, body: String, tag: String }],
+  messageTemplates: [{
+    name: String,
+    desc: String,
+    body: String,
+    tag: String,
+    attachmentUrl: String,
+    attachmentName: String,
+    attachmentType: String,
+    attachmentSize: Number,
+  }],
   storage: { used: { type: Number, default: 0 }, total: { type: Number, default: 100 } },
 }, { timestamps: true });
 

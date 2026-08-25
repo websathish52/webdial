@@ -223,13 +223,15 @@ function ReportsPage() {
               <PieChart><Pie data={dispoData} dataKey="value" outerRadius={90} label>{dispoData.map((d,i)=><Cell key={i} fill={d.color}/>)}</Pie><Tooltip/><Legend/></PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="bg-card rounded-xl border p-5 lg:col-span-2">
+          <div className="bg-card rounded-xl border p-4 sm:p-5 lg:col-span-2 min-w-0 overflow-hidden">
             <h3 className="font-semibold mb-3">Agent performance</h3>
-            <ResponsiveContainer width="100%" height={260}>
+            <div className="h-[280px] w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%">
               <BarChart data={agentData}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="name"/><YAxis/><Tooltip/>
                 <Bar dataKey="calls" fill="#10b981" radius={[6,6,0,0]}/>
               </BarChart>
             </ResponsiveContainer>
+            </div>
           </div>
         </div>
       )}
@@ -244,7 +246,7 @@ function ReportsPage() {
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="min-w-[760px] w-full text-sm">
             <thead className="bg-muted/40 text-xs text-muted-foreground uppercase">
               <tr>
                 <th className="p-3 text-left">Name</th><th className="p-3 text-left">Phone</th><th className="p-3 text-left">Date</th>

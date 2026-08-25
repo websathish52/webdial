@@ -282,22 +282,25 @@ function Dashboard() {
     </div>
   ))}
 </div>
-      <div className="grid lg:grid-cols-2 gap-4 ">
-        <div className="bg-card rounded-xl border p-6 shadow">
+      <div className="grid min-w-0 lg:grid-cols-2 gap-4">
+        <div className="bg-card rounded-xl border p-4 sm:p-6 shadow min-w-0 overflow-hidden">
           <h3 className="font-semibold mb-2">Dispositions</h3>
-          <ResponsiveContainer width="100%" height={220}>
+          <div className="h-[280px] w-full min-w-0">
+          <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={myDispositionsToday} dataKey="value" cx="50%" cy="50%" outerRadius={80} innerRadius={40}>
+              <Pie data={myDispositionsToday} dataKey="value" cx="50%" cy="42%" outerRadius="28%" innerRadius="14%">
                 {myDispositionsToday.map((d, i) => <Cell key={i} fill={d.color} />)}
               </Pie>
               <Tooltip />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
+          </div>
         </div>
-        <div className="bg-card rounded-xl border p-6 shadow">
+        <div className="bg-card rounded-xl border p-4 sm:p-6 shadow min-w-0 overflow-hidden">
           <h3 className="font-semibold mb-2">Daily Calls (Last 7 Days Performance)</h3>
-          <ResponsiveContainer width="100%" height={220}>
+          <div className="h-[280px] w-full min-w-0">
+          <ResponsiveContainer width="100%" height="100%">
             <BarChart data={dailyCallsData} barCategoryGap="18%" barGap={3}>
               <XAxis dataKey="day" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
@@ -308,6 +311,7 @@ function Dashboard() {
               )) : <Bar dataKey="calls" name="Calls" fill="oklch(0.68 0.18 150)" radius={[6, 6, 0, 0]} />}
             </BarChart>
           </ResponsiveContainer>
+          </div>
         </div>
       </div>
 

@@ -1,40 +1,48 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import api from "@/lib/api";
 import { toast } from "sonner";
 
 type IntegrationItem = { id: string; name: string; description: string; connected: boolean; icon: string };
 
 function IntegrationPage() {
-  const [items, setItems] = useState<IntegrationItem[]>([
-    { id: "google-sheets", name: "Google Sheets", description: "Sync leads from Google Sheets", connected: false, icon: "📊" },
-    { id: "zapier", name: "Zapier", description: "Connect 5000+ apps", connected: false, icon: "⚡" },
-    { id: "facebook", name: "Facebook Lead Ads", description: "Import leads from FB ads", connected: false, icon: "📘" },
-    { id: "whatsapp", name: "WhatsApp Business API", description: "Send template messages", connected: false, icon: "💬" },
-    { id: "webhook", name: "Webhook", description: "Custom HTTP webhooks", connected: false, icon: "🔗" },
-  ]);
+  const [items, setItems] = useState<IntegrationItem[]>([]);
+  const [selected, setSelected] = useState<IntegrationItem | null>(null);
+  const [configValue, setConfigValue] = useState("");
+  const [loading, setLoading] = useState(true);
+  const icons = ["F", "I", "I", "J", "J", "T", "P", "Q", "9", "M", "H", "H", "S", "W", "G", "G", "A", "W", "I", "Z", "W"];
 
   useEffect(() => {
-    const stored = localStorage.getItem("ifox_integrations");
-    if (stored) {
-      try { setItems(JSON.parse(stored)); } catch {}
-    }
+    api.getIntegrations().then((data: any[]) => setItems((Array.isArray(data) ? data : []).map((item, index) => ({ ...item, id: item.provider, icon: icons[index] || "•" })))).catch((err: any) => toast.error(err?.message || "Could not load integrations")).finally(() => setLoading(false));
   }, []);
 
-  const toggleItem = (id: string) => {
-    const next = items.map(item => item.id === id ? { ...item, connected: !item.connected } : item);
-    setItems(next);
-    localStorage.setItem("ifox_integrations", JSON.stringify(next));
-    toast.success(next.find(item => item.id === id)?.connected ? "Connected" : "Disconnected");
+  const toggleItem = (item: IntegrationItem) => {
+    setSelected(item);
+    setConfigValue("");
+  };
+
+  const saveConnection = async () => {
+    if (!selected) return;
+    try {
+      const next = await api.updateIntegration(selected.id, { provider: selected.id, name: selected.name, description: selected.description, connected: !selected.connected, config: { credential: configValue.trim() } });
+      setItems((current) => current.map((item) => item.id === selected.id ? { ...item, connected: next.connected } : item));
+      setSelected(null);
+      toast.success(next.connected ? "Integration connected" : "Integration disconnected");
+    } catch (err: any) { toast.error(err?.message || "Could not update integration"); }
   };
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-4 sm:p-6 space-y-4">
       <h2 className="text-2xl font-bold">Integrations</h2>
-      <p className="text-muted-foreground">Connect Web Dail to your favorite tools.</p>
+      <p className="text-muted-foreground">Company integrations and connection settings.</p>
+      {loading && <div className="text-sm text-muted-foreground">Loading integrations...</div>}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map(i => (
-          <div key={i.id} className="bg-card rounded-xl border p-5">
+          <div key={i.id} className="bg-card rounded-xl border p-5 min-w-0">
             <div className="flex items-start justify-between mb-3">
-              <div className="text-4xl">{i.icon}</div>
+              <div className="size-11 rounded-xl bg-primary/10 text-primary grid place-items-center text-xl font-bold">{i.icon}</div>
               {i.connected && <span className="text-xs bg-success/20 text-success px-2 py-1 rounded">Connected</span>}
             </div>
             <h3 className="font-semibold">{i.name}</h3>
@@ -42,13 +50,21 @@ function IntegrationPage() {
             <Button
               variant={i.connected ? "outline" : "default"}
               className={i.connected ? "" : "bg-primary"}
-              onClick={() => toggleItem(i.id)}
+              onClick={() => toggleItem(i)}
             >
               {i.connected ? "Disconnect" : "Connect"}
             </Button>
           </div>
         ))}
       </div>
+      <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{selected?.connected ? "Disconnect" : "Connect"} {selected?.name}</DialogTitle></DialogHeader>
+          {!selected?.connected && <div><Label>API key, token, webhook URL, or account ID</Label><Input value={configValue} onChange={(event) => setConfigValue(event.target.value)} placeholder="Enter provider credentials" /></div>}
+          <p className="text-xs text-muted-foreground">Provider-specific live sync requires valid credentials and webhook/OAuth configuration.</p>
+          <DialogFooter><Button variant="outline" onClick={() => setSelected(null)}>Cancel</Button><Button onClick={() => void saveConnection()}>{selected?.connected ? "Disconnect" : "Save and Connect"}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

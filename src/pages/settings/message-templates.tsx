@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { MessageSquare, Zap, Save, Type, Plus, ChevronRight, RefreshCw, Link2, List, Edit, Trash2 } from "lucide-react";
+import { MessageSquare, Plus, ChevronRight, Link2, List, Edit, Trash2, Paperclip, X } from "lucide-react";
 import { BRAND, HeroBanner, SettingsTopBar } from "./_shared";
-import api from "@/lib/api"; // Assuming api.ts exists
+import api, { resolveFileUrl } from "@/lib/api";
 import { toast } from "sonner"; // Assuming sonner for toasts
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,10 @@ type MessageTemplate = {
   desc: string;
   body: string; // The actual message content
   tag?: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
+  attachmentType?: string;
+  attachmentSize?: number;
 };
 
 export default function MessageTemplatesPage() {
@@ -28,6 +32,8 @@ export default function MessageTemplatesPage() {
   const [templateDesc, setTemplateDesc] = useState("");
   const [templateBody, setTemplateBody] = useState("");
   const [templateTag, setTemplateTag] = useState("");
+  const [attachment, setAttachment] = useState<MessageTemplate>({ name: "", desc: "", body: "" });
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
 
   const loadTemplates = async () => {
     try {
@@ -49,6 +55,7 @@ export default function MessageTemplatesPage() {
     setTemplateDesc(template?.desc || "");
     setTemplateBody(template?.body || "");
     setTemplateTag(template?.tag || "");
+    setAttachment(template || { name: "", desc: "", body: "" });
     setAddEditOpen(true);
   };
 
@@ -57,7 +64,11 @@ export default function MessageTemplatesPage() {
       toast.error("Template name and body are required.");
       return;
     }
-    const payload = { name: templateName.trim(), desc: templateDesc.trim(), body: templateBody.trim(), tag: templateTag.trim() || undefined };
+    const payload = {
+      name: templateName.trim(), desc: templateDesc.trim(), body: templateBody.trim(), tag: templateTag.trim() || undefined,
+      attachmentUrl: attachment.attachmentUrl || null, attachmentName: attachment.attachmentName || null,
+      attachmentType: attachment.attachmentType || null, attachmentSize: attachment.attachmentSize || null,
+    };
     try {
       if (currentTemplate?._id || currentTemplate?.id) {
         // Assert that the ID is a string, as the 'if' condition guarantees its presence.
@@ -71,6 +82,22 @@ export default function MessageTemplatesPage() {
       void loadTemplates();
     } catch (err: any) {
       toast.error(err?.message || "Failed to save template.");
+    }
+  };
+
+  const uploadAttachment = async (file?: File) => {
+    if (!file) return;
+    setUploadingAttachment(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const uploaded = await api.uploadMessageTemplateAttachment(formData);
+      setAttachment((current) => ({ ...current, ...uploaded }));
+      toast.success("Attachment uploaded");
+    } catch (err: any) {
+      toast.error(err?.message || "Could not upload attachment");
+    } finally {
+      setUploadingAttachment(false);
     }
   };
 
@@ -117,6 +144,7 @@ export default function MessageTemplatesPage() {
                   <div>
                     <div className="text-sm font-semibold text-gray-900">{t.name}</div>
                     <div className="text-xs text-gray-500">{t.desc}</div>
+                      {t.attachmentName && <div className="mt-1 flex items-center gap-1 text-xs text-blue-600"><Paperclip className="size-3" /> {t.attachmentName}</div>}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -161,6 +189,18 @@ export default function MessageTemplatesPage() {
             <div>
               <Label>Tag (optional)</Label>
               <Input value={templateTag} onChange={(e) => setTemplateTag(e.target.value)} placeholder="e.g., Link, Auto" />
+            </div>
+            <div>
+              <Label>Attachment (optional)</Label>
+              <Input type="file" onChange={(e) => void uploadAttachment(e.target.files?.[0])} disabled={uploadingAttachment} />
+              {uploadingAttachment && <div className="text-xs text-muted-foreground mt-1">Uploading attachment...</div>}
+              {attachment.attachmentUrl && (
+                <div className="mt-2 flex items-center gap-2 rounded-lg border bg-muted/30 p-2 text-xs">
+                  <Paperclip className="size-4 text-blue-600" />
+                  <a href={resolveFileUrl(attachment.attachmentUrl)} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-blue-600 hover:underline">{attachment.attachmentName}</a>
+                  <button type="button" onClick={() => setAttachment((current) => ({ ...current, attachmentUrl: undefined, attachmentName: undefined, attachmentType: undefined, attachmentSize: undefined }))} title="Remove attachment" className="text-muted-foreground hover:text-destructive"><X className="size-4" /></button>
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>

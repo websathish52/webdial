@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Play, Download, Mic } from "lucide-react";
-import api from "@/lib/api";
+import api, { resolveFileUrl } from "@/lib/api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 type RecordingItem = { _id?: string; id?: string; leadName?: string; phone?: string; agent?: any; duration?: number; date?: string; url?: string };
 
 function RecordingPage() {
   const [recs, setRecs] = useState<RecordingItem[]>([]);
+  const [playing, setPlaying] = useState<RecordingItem | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -21,7 +23,7 @@ function RecordingPage() {
     void loadData();
   }, []);
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-4 sm:p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold flex items-center gap-2">Recordings <span className="text-xs bg-primary/15 text-primary px-2 py-0.5 rounded">BETA</span></h2>
       </div>
@@ -40,8 +42,8 @@ function RecordingPage() {
                 <td className="p-3">{r.duration || 0}s</td>
                 <td className="p-3">{r.date ? new Date(r.date).toLocaleDateString() : "—"}</td>
                 <td className="p-3 text-right">
-                  <Button size="sm" variant="ghost" className="gap-1" onClick={() => r.url ? window.open(r.url, "_blank") : toast.info("No recording URL available") }><Play className="size-3"/>Play</Button>
-                  <Button size="sm" variant="ghost" className="gap-1" onClick={() => r.url ? window.open(r.url, "_blank") : toast.info("No recording URL available") }><Download className="size-3"/>Download</Button>
+                  <Button size="sm" variant="ghost" className="gap-1" onClick={() => r.url ? setPlaying(r) : toast.info("No recording URL available") }><Play className="size-3"/>Play</Button>
+                  <Button size="sm" variant="ghost" className="gap-1" onClick={() => r.url ? window.open(resolveFileUrl(r.url), "_blank") : toast.info("No recording URL available") }><Download className="size-3"/>Download</Button>
                 </td>
               </tr>
             ))}
@@ -50,6 +52,17 @@ function RecordingPage() {
           </table>
         </div>
       </div>
+      <Dialog open={!!playing} onOpenChange={(open) => !open && setPlaying(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{playing?.leadName || "Call recording"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">{playing?.phone || ""} · {playing?.duration || 0}s</div>
+            {playing?.url && <audio controls autoPlay className="w-full" src={resolveFileUrl(playing.url)} />}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

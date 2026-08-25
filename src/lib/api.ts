@@ -2,6 +2,14 @@ import { store } from '@/lib/mock-store';
 
 const rawApiUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 export const API_BASE = rawApiUrl || 'http://localhost:5000';
+let activeRequests = 0;
+
+function setApiLoading(delta: 1 | -1) {
+  activeRequests = Math.max(0, activeRequests + delta);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('ifox-api-loading', { detail: { loading: activeRequests > 0 } }));
+  }
+}
 
 function buildApiUrl(path: string) {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
@@ -69,24 +77,29 @@ export function setSelectedCompanyId(companyId: string | null) {
 }
 
 async function request(path: string, opts: RequestInit = {}) {
+  setApiLoading(1);
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (opts.body && !(opts.body instanceof FormData)) headers['Content-Type'] = 'application/json';
   const token = getStoredToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const companyId = getSelectedCompanyId();
   if (companyId) headers['X-Company-Id'] = companyId;
-  const res = await fetch(buildApiUrl(path), { ...opts, headers });
-  if (!res.ok) {
-    if (res.status === 401 || res.status === 403) {
-      clearAuthStorage();
+  try {
+    const res = await fetch(buildApiUrl(path), { ...opts, headers: { ...headers, ...(opts.headers || {}) } });
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        clearAuthStorage();
+      }
+      const text = await res.text();
+      let json;
+      try { json = JSON.parse(text); } catch { json = { message: text }; }
+      const err = new Error(json.message || res.statusText);
+      throw err;
     }
-    const text = await res.text();
-    let json;
-    try { json = JSON.parse(text); } catch { json = { message: text }; }
-    const err = new Error(json.message || res.statusText);
-    throw err;
+    return res.json().catch(() => null);
+  } finally {
+    setApiLoading(-1);
   }
-  return res.json().catch(() => null);
 }
 
 // ============ AUTH ============
@@ -171,8 +184,8 @@ export async function deleteLead(id: string) {
   return result;
 }
 
-export async function getLists() {
-  return await request('/api/crm/lists');
+export async function getLists(companyId?: string | null) {
+  return await request('/api/crm/lists', companyId ? { headers: { 'X-Company-Id': companyId } } : undefined);
 }
 
 export async function createList(name: string, description?: string) {
@@ -263,20 +276,25 @@ export async function updateSettings(settings: any) {
 
 // ============ FILE UPLOADS ============
 export async function uploadFile(formData: FormData) {
+  setApiLoading(1);
   const token = getStoredToken();
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const companyId = getSelectedCompanyId();
   if (companyId) headers['X-Company-Id'] = companyId;
-  const res = await fetch(buildApiUrl('/uploads'), { method: 'POST', body: formData, headers });
-  if (!res.ok) {
-    if (res.status === 401 || res.status === 403) clearAuthStorage();
-    const text = await res.text();
-    let json;
-    try { json = JSON.parse(text); } catch { json = { message: text }; }
-    throw new Error(json.message || res.statusText || 'Upload failed');
+  try {
+    const res = await fetch(buildApiUrl('/uploads'), { method: 'POST', body: formData, headers });
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) clearAuthStorage();
+      const text = await res.text();
+      let json;
+      try { json = JSON.parse(text); } catch { json = { message: text }; }
+      throw new Error(json.message || res.statusText || 'Upload failed');
+    }
+    return res.json();
+  } finally {
+    setApiLoading(-1);
   }
-  return res.json();
 }
 
 export async function getUploads() {
@@ -415,9 +433,14 @@ export async function getMessageTemplates() { return await request('/api/setting
 export async function createMessageTemplate(data: any) { return await request('/api/settings/message-templates', { method: 'POST', body: JSON.stringify(data) }); }
 export async function updateMessageTemplate(id: string, data: any) { return await request(`/api/settings/message-templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }); }
 export async function deleteMessageTemplate(id: string) { return await request(`/api/settings/message-templates/${id}`, { method: 'DELETE' }); }
+export async function uploadMessageTemplateAttachment(formData: FormData) { return await request('/api/settings/message-templates/attachment', { method: 'POST', body: formData }); }
 
 // Storage
 export async function getStorageUsage() { return await request('/api/settings/storage'); }
+export async function getIntegrations() { return await request('/api/integrations'); }
+export async function updateIntegration(provider: string, data: any) { return await request(`/api/integrations/${provider}`, { method: 'PUT', body: JSON.stringify(data) }); }
+export async function getPbxSettings() { return await request('/api/pbx'); }
+export async function updatePbxSettings(data: any) { return await request('/api/pbx', { method: 'PUT', body: JSON.stringify(data) }); }
 
 export default {
   login, me, changePassword, registerUser,
@@ -440,6 +463,7 @@ export default {
   getUniqueContactsSetting, updateUniqueContactsSetting,
   getDialerSettings, updateDialerSettings,
   getCustomStatuses, createCustomStatus, updateCustomStatus, deleteCustomStatus,
-  getMessageTemplates, createMessageTemplate, updateMessageTemplate, deleteMessageTemplate,
+  getMessageTemplates, createMessageTemplate, updateMessageTemplate, deleteMessageTemplate, uploadMessageTemplateAttachment,
   getStorageUsage,
+  getIntegrations, updateIntegration, getPbxSettings, updatePbxSettings,
 };

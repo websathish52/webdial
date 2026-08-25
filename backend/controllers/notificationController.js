@@ -16,15 +16,19 @@ exports.listNotifications = async (req, res) => {
     const tasks = taskIds.length ? await Task.find({ _id: { $in: taskIds } }).lean() : [];
     const taskMap = Object.fromEntries(tasks.map(task => [String(task._id), task]));
     const recipient = await User.findById(req.user._id).select('name').lean();
-    const actor = await User.findById(notifications[0]?.actorId || req.user._id).select('name').lean();
-    const company = companyId ? await Company.findById(companyId).select('companyName').lean() : null;
+    const actorIds = notifications.map((n) => n.actorId).filter(Boolean);
+    const actors = actorIds.length ? await User.find({ _id: { $in: actorIds } }).select('name').lean() : [];
+    const actorMap = Object.fromEntries(actors.map((actor) => [String(actor._id), actor.name]));
+    const companyIds = notifications.map((n) => n.companyId).filter(Boolean);
+    const companies = companyIds.length ? await Company.find({ _id: { $in: companyIds } }).select('companyName').lean() : [];
+    const companyMap = Object.fromEntries(companies.map((company) => [String(company._id), company.companyName]));
     const enriched = notifications.map((n) => ({
       ...n,
       _id: n._id.toString(),
       relatedTask: taskMap[String(n.relatedTaskId)] || null,
       recipientName: recipient?.name || 'User',
-      actorName: actor?.name || 'System',
-      companyName: company?.companyName || 'Company',
+      actorName: actorMap[String(n.actorId)] || 'System',
+      companyName: companyMap[String(n.companyId)] || 'Company',
     }));
     res.json(enriched);
   } catch (err) {
@@ -67,4 +71,17 @@ exports.createTaskAssignedNotification = async ({ companyId, recipientId, actorI
     },
   });
   return notification;
+};
+
+exports.createTaskUpdatedNotification = async ({ companyId, recipientId, actorId, task, companyName, completed }) => {
+  return Notification.create({
+    companyId,
+    recipientId,
+    actorId,
+    type: completed ? 'task_completed' : 'task_updated',
+    title: completed ? 'Task completed' : 'Task updated',
+    message: `Task "${task.title}" was ${completed ? 'completed' : 'updated'}`,
+    relatedTaskId: task._id,
+    metadata: { taskTitle: task.title, companyName },
+  });
 };

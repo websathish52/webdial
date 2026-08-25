@@ -77,6 +77,17 @@ exports.updateTask = async (req, res) => {
   try {
     const task = await Task.findOneAndUpdate({ _id: req.params.id, ...buildTenantFilter(req, {}) }, req.body, { new: true });
     if (!task) return res.status(404).json({ message: 'Task not found' });
+    if (task.assignedTo && String(task.assignedTo) !== String(req.user._id)) {
+      const company = await Company.findById(task.companyId).select('companyName').lean();
+      await notificationController.createTaskUpdatedNotification({
+        companyId: task.companyId,
+        recipientId: task.assignedTo,
+        actorId: req.user._id,
+        task,
+        companyName: company?.companyName || 'Company',
+        completed: task.status === 'done',
+      });
+    }
     await logAudit(req.user._id, 'Updated task', 'Tasks', { taskId: task._id, companyId: task.companyId }, task.companyId);
     res.json(task);
   } catch (err) {

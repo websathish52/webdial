@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Settings = require('../models/Settings');
+const List = require('../models/List');
 const logAudit = require('../utils/auditLogger');
 const { buildTenantFilterAsync, isSuperAdmin, isMaster } = require('../middleware/tenant');
 const Company = require('../models/Company');
@@ -106,6 +107,15 @@ exports.updateMember = async (req, res) => {
     } else if (companyId === null && isSuperAdmin(req)) {
       // Allow SuperAdmin to unassign a user from a company
       member.companyId = null;
+    }
+
+    if (lists !== undefined && member.companyId) {
+      const allowedLists = await List.find({ companyId: member.companyId, name: { $in: lists } }).select('name').lean();
+      const allowedNames = new Set(allowedLists.map((list) => list.name));
+      const invalidLists = lists.filter((list) => !allowedNames.has(list));
+      if (invalidLists.length) {
+        return res.status(400).json({ message: `These lists do not belong to the selected company: ${invalidLists.join(', ')}` });
+      }
     }
 
     await member.save();

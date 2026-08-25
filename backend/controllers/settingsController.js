@@ -461,3 +461,19 @@ exports.getStorageUsage = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+exports.uploadMessageTemplateAttachment = async (req, res) => {
+  try {
+    if (isOwnContext(req)) return requireCompanySelectedResponse(res);
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+    const attachmentUrl = saveBufferAndGetUrl(`companies/${req.companyId}/templates`, req.file);
+    res.status(201).json({
+      attachmentUrl,
+      attachmentName: req.file.originalname,
+      attachmentType: req.file.mimetype,
+      attachmentSize: req.file.size,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

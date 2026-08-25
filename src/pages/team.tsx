@@ -584,7 +584,7 @@ function TeamPage() {
           // Per request, if the member is a Telecaller, also show all available lists.
           const assignedAndExistingLists = (m.lists || []).filter((listName: string) => lists.includes(listName));
           const visibleLists =
-            isMeSuperAdminCard || m.flags?.allowAllListAccess || m.role === "Telecaller"
+            isMeSuperAdminCard || m.flags?.allowAllListAccess
               ? lists
               : assignedAndExistingLists;
           
@@ -997,6 +997,7 @@ function MemberDialog({
   const [role, setRole] = useState<string>(normalizeRole(member?.role));
   const [selectedTeams, setSelectedTeams] = useState<string[]>(member?.teams ?? []);
   const [lists, setLists] = useState<string[]>(member?.lists ?? []);
+  const [dialogLists, setDialogLists] = useState<string[]>(availableLists);
   const [perms, setPerms] = useState<Permissions>(member?.permissions ?? defaultTelecallerPerms());
   const [flags, setFlags] = useState<MemberFlags>(member?.flags ?? defaultFlags());
 
@@ -1009,12 +1010,7 @@ function MemberDialog({
   // selected *inside* this dialog, not the page-level filter.
   // For non-SuperAdmins, this is always their own company's lists.
   // For SuperAdmins, this dynamically changes when they pick a company.
-  const dialogScopedLists = useMemo(() => { // This provides the available lists to choose from in the dialog.
-    if (!isSuperAdmin) return availableLists; // For non-admins, it's just their own lists
-    // For SuperAdmins, we need to re-fetch or filter from a master list.
-    // Assuming `availableLists` passed in is the master list for SuperAdmins.
-    return availableLists; // This assumes parent passes all lists for SuperAdmin
-  }, [isSuperAdmin, companyId, availableLists]);
+  const dialogScopedLists = useMemo(() => (isSuperAdmin ? dialogLists : availableLists), [isSuperAdmin, dialogLists, availableLists]);
   // "SuperAdmin" is never an assignable role from this dialog. It only
   // appears in the list when we're editing a member who is already a
   // SuperAdmin, so the Select still has a valid value to show.
@@ -1059,7 +1055,31 @@ function MemberDialog({
     } else {
       setLists(member.lists ?? []);
     }
-  }, [member, open, presetCompanyId, presetTeam, selectedCompanyId, dialogScopedLists]);
+  }, [member, open, presetCompanyId, presetTeam, selectedCompanyId]);
+
+  useEffect(() => {
+    let active = true;
+    if (!open || !isSuperAdmin || !companyId) {
+      setDialogLists(availableLists);
+      return () => { active = false; };
+    }
+    api.getLists(companyId).then((response: any) => {
+      if (!active) return;
+      const items = Array.isArray(response) ? response : (response?.lists || []);
+      setDialogLists(items.map((item: any) => typeof item === "string" ? item : item.name).filter(Boolean));
+    }).catch(() => {
+      if (active) setDialogLists([]);
+    });
+    return () => { active = false; };
+  }, [open, isSuperAdmin, companyId, availableLists]);
+
+  useEffect(() => {
+    if (!open) return;
+    const currentRole = normalizeRole(member?.role);
+    if (currentRole === "Telecaller" || currentRole === "SuperAdmin" || !member) {
+      setLists(dialogScopedLists);
+    }
+  }, [open, member, dialogScopedLists]);
 
   const submit = async () => {
     if (!name || !email || (!password && !member)) return toast.error("Name, email & password required");

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Phone, Play, Pause, SkipForward, PhoneOff, ArrowLeft, Settings2, Mic, MicOff, MessageCircle } from "lucide-react";
+import { Phone, Play, Pause, SkipForward, PhoneOff, ArrowLeft, Settings2, Mic, MicOff, MessageCircle, Kanban } from "lucide-react";
 import { toast } from "sonner";
 
 
@@ -295,10 +295,11 @@ function DialerPage() {
         notes,
         recordingUrl,
       });
-      await loadData();
       setDispoOpen(false); setTimer(0); setNotes(""); setRecordingUrl(undefined);
       toast.success(`Logged: ${dispoMeta(dispo).label}`);
+      const refreshPromise = loadData();
       if (running) {
+        await refreshPromise;
         setGapCountdown(gap);
         gapRef.current = window.setInterval(() => {
           setGapCountdown((c) => {
@@ -468,7 +469,10 @@ function DialerPage() {
             Duration: <span className="font-mono font-semibold">{fmt(pendingDuration)}</span>
             {recordingUrl && <span className="ml-2 text-primary">· Recording saved</span>}
           </div>
-          {current?.phone && <a href={`https://wa.me/${String(current.phone).replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-green-700 hover:underline"><MessageCircle className="size-4" /> WhatsApp this number</a>}
+          <div className="flex flex-wrap items-center gap-3">
+            {current?.phone && <a href={`https://wa.me/${String(current.phone).replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-green-700 hover:underline"><MessageCircle className="size-4" /> WhatsApp this number</a>}
+            {current && <button type="button" onClick={() => nav(`/pipeline?phone=${encodeURIComponent(current.phone)}`)} className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-700 hover:underline"><Kanban className="size-4" /> Pipeline</button>}
+          </div>
           <div className="text-xs font-semibold mt-2">Select disposition to continue</div>
           <div className="grid grid-cols-2 gap-2">
             {DISPOSITIONS.filter((d) => d.key !== "new").map((d) => (

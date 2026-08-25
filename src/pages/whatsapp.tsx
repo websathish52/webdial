@@ -5,17 +5,19 @@ import { store, useStore, type Lead } from "@/lib/mock-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import api from "@/lib/api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import api, { resolveFileUrl } from "@/lib/api";
 import { Send, MessageCircle, Search, Phone } from "lucide-react";
 import { toast } from "sonner";
 
 type Search = { phone?: string; name?: string };
+type MessageTemplate = { _id?: string; id?: string; name: string; body: string; attachmentUrl?: string; attachmentName?: string };
 
 function WhatsappPage() {
   const q = useAppSearch();
   const [leads, setLeads] = useState<Lead[]>([]);
   const messages = useStore(s => s.messages);
-  const templates = useStore(s => s.settings.messageTemplates);
+  const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [lists, setLists] = useState<string[]>([]);
 
   const loadLists = useCallback(async () => {
@@ -43,6 +45,12 @@ function WhatsappPage() {
   useEffect(() => { void loadLists(); void loadLeads(); }, [loadLists, loadLeads]);
 
   useEffect(() => {
+    api.getMessageTemplates()
+      .then((response: any) => setTemplates(Array.isArray(response) ? response : []))
+      .catch((err: any) => toast.error(err?.message || "Could not load message templates"));
+  }, []);
+
+  useEffect(() => {
     const handleCrmUpdated = () => {
       void loadLists();
       void loadLeads();
@@ -65,7 +73,9 @@ function WhatsappPage() {
   const [selectedList, setSelectedList] = useState("all");
   const [search, setSearch] = useState("");
   const [active, setActive] = useState<{ phone: string; name: string } | null>(null);
+  const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [text, setText] = useState("");
+  const [selectedAttachment, setSelectedAttachment] = useState<MessageTemplate | null>(null);
 
   useEffect(() => {
     if (q.phone) setActive({ phone: q.phone, name: q.name || q.phone });
@@ -73,6 +83,19 @@ function WhatsappPage() {
 
   const filtered = contacts.filter(c => (selectedList === "all" || c.list === selectedList) && (c.name.toLowerCase().includes(search.toLowerCase()) || c.phone.includes(search)));
   const thread = active ? messages.filter(m => m.phone === active.phone).slice().reverse() : [];
+
+  const templateText = (template: MessageTemplate) => {
+    const message = template.body.replaceAll("{{name}}", active?.name || "");
+    return template.attachmentUrl ? `${message}\n${resolveFileUrl(template.attachmentUrl)}` : message;
+  };
+
+  const applyTemplate = (templateId: string) => {
+    const template = templates.find((item) => (item._id || item.id) === templateId);
+    if (template) {
+      setText(templateText(template));
+      setSelectedAttachment(template.attachmentUrl ? template : null);
+    }
+  };
 
   const send = () => {
     if (!active || !text.trim()) return;
@@ -113,7 +136,7 @@ function WhatsappPage() {
           </div>
           <div className="flex-1 overflow-y-auto max-h-[40vh] lg:max-h-none">
             {filtered.map(c => (
-              <button key={c.phone} onClick={()=>setActive(c)}
+              <button key={c.phone} onClick={()=>{ setActive(c); if (window.matchMedia("(max-width: 1023px)").matches) setMobileChatOpen(true); }}
                 className={`w-full text-left flex items-center gap-3 p-3 border-b hover:bg-muted/50 ${active?.phone===c.phone ? "bg-blue-50" : ""}`}>
                 <div className="size-10 rounded-full bg-blue-500 text-white grid place-items-center font-bold">{c.name.charAt(0).toUpperCase()}</div>
                 <div className="min-w-0 flex-1">
@@ -127,7 +150,7 @@ function WhatsappPage() {
         </div>
 
         {/* Thread */}
-        <div className="flex flex-col min-h-[40vh] lg:min-h-0" style={{
+        <div className="hidden lg:flex flex-col min-h-[40vh] lg:min-h-0" style={{
           backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60'><text x='0' y='40' font-size='30' opacity='0.05'>💬</text></svg>\")",
           backgroundColor: "#f0f2f5",
         }}>
@@ -154,20 +177,12 @@ function WhatsappPage() {
                 ))}
               </div>
               <div className="p-3 border-t bg-card space-y-2">
-                {templates.length > 0 && (
-                  <div className="flex flex-wrap gap-1 text-xs">
-                    {templates.map(t => (
-                      <button key={t.id} onClick={()=>setText(t.body.replace("{{name}}", active.name))}
-                        className="px-2 py-1 rounded bg-muted hover:bg-muted-foreground/10">
-                        {t.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                {templates.length > 0 && <Select onValueChange={applyTemplate}><SelectTrigger className="bg-background text-xs"><SelectValue placeholder="Choose message template" /></SelectTrigger><SelectContent>{templates.map(t => <SelectItem key={t._id || t.id} value={t._id || t.id || t.name}>{t.name}{t.attachmentName ? " + file" : ""}</SelectItem>)}</SelectContent></Select>}
                 <div className="flex gap-2">
                   <Input placeholder="Type a message" value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} className="bg-background"/>
                   <Button onClick={send} className="bg-blue-600 hover:bg-blue-700 gap-1"><Send className="size-4"/> Send</Button>
                 </div>
+                {selectedAttachment?.attachmentUrl && <a href={resolveFileUrl(selectedAttachment.attachmentUrl)} target="_blank" rel="noreferrer" className="flex items-center gap-2 truncate text-xs text-blue-700 hover:underline"><span>Attachment:</span> {selectedAttachment.attachmentName || "Open file"}</a>}
               </div>
             </>
           ) : (
@@ -181,6 +196,35 @@ function WhatsappPage() {
           )}
         </div>
       </div>
+
+      <Dialog open={mobileChatOpen && !!active} onOpenChange={setMobileChatOpen}>
+        <DialogContent className="lg:hidden max-w-[calc(100%-1rem)] p-0 overflow-hidden">
+          <DialogHeader className="bg-blue-600 text-white p-4">
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="size-5" /> {active?.name}
+              <span className="text-xs font-normal opacity-90">{active?.phone}</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex max-h-[70vh] flex-col bg-[#f0f2f5]">
+            <div className="flex-1 overflow-y-auto p-4 space-y-2 min-h-[35vh]">
+              {thread.length === 0 && <div className="text-center text-sm text-muted-foreground py-8">No messages yet.</div>}
+              {thread.map(m => (
+                <div key={m.id} className={`flex ${m.direction === "out" ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow ${m.direction === "out" ? "bg-blue-500 text-white rounded-br-sm" : "bg-white rounded-bl-sm"}`}>
+                    {m.text}
+                    <div className={`text-[10px] mt-0.5 ${m.direction === "out" ? "text-white/70" : "text-muted-foreground"}`}>{new Date(m.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="p-3 border-t bg-card space-y-2">
+              {templates.length > 0 && <Select onValueChange={applyTemplate}><SelectTrigger className="bg-background text-xs"><SelectValue placeholder="Choose message template" /></SelectTrigger><SelectContent>{templates.map(t => <SelectItem key={t._id || t.id} value={t._id || t.id || t.name}>{t.name}{t.attachmentName ? " + file" : ""}</SelectItem>)}</SelectContent></Select>}
+              <div className="flex gap-2"><Input placeholder="Type a message" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} className="bg-background min-w-0" /><Button onClick={send} className="bg-blue-600 hover:bg-blue-700 gap-1 shrink-0"><Send className="size-4" /><span className="hidden sm:inline">Send</span></Button></div>
+              {selectedAttachment?.attachmentUrl && <a href={resolveFileUrl(selectedAttachment.attachmentUrl)} target="_blank" rel="noreferrer" className="flex items-center gap-2 truncate text-xs text-blue-700 hover:underline"><span>Attachment:</span> {selectedAttachment.attachmentName || "Open file"}</a>}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

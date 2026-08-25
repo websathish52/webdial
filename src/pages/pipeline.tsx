@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,6 +19,8 @@ type EnrichedDeal = Deal & { lead?: Lead; list: string; isTemp?: boolean; source
 function PipelinePage() {
   useDispositionColors();
   const me = useCurrentMember();
+  const [searchParams] = useSearchParams();
+  const focusedPhone = searchParams.get("phone") || "";
   const isSuperAdmin = String(me?.role || '').toLowerCase() === 'superadmin';
   const [stages, setStages] = useState<Stage[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -44,6 +47,7 @@ function PipelinePage() {
       setLeads(Array.isArray(leadsRes?.leads) ? leadsRes.leads : []);
       setLists(Array.isArray(listsRes) ? listsRes.map((l: any) => l.name) : (listsRes?.lists || []).map((l: any) => l.name));
       setSelectedList((current) => current || "all");
+      if (focusedPhone) setSearch(focusedPhone);
     } catch (err: any) {
       toast.error(err?.message || "Could not load pipeline data");
     } finally {
@@ -51,7 +55,7 @@ function PipelinePage() {
     }
   };
 
-  useEffect(() => { void loadData(); }, []);
+  useEffect(() => { void loadData(); }, [focusedPhone]);
 
   useEffect(() => {
     const handleCrmUpdated = () => { void loadData(); };
@@ -169,7 +173,7 @@ function PipelinePage() {
         <Button className="bg-blue-600 shrink-0" size="icon" aria-label="Pipeline assistant"><Bot className="size-4" /></Button>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto pb-4">
+      <div className="flex gap-3 overflow-x-auto overscroll-x-contain pb-4 touch-pan-x snap-x snap-mandatory">
         {stages.map((s) => {
           const isNewStage = (s.name || '').trim().toLowerCase() === 'new';
           const stageDeals = scoped
@@ -206,7 +210,7 @@ function PipelinePage() {
           const combinedDeals = [...extraLeads, ...stageDeals];
 
           return (
-            <div key={s._id || s.id} className="w-72 shrink-0 bg-card border rounded-xl flex flex-col max-h-[70vh]" onDragOver={(e) => e.preventDefault()} onDrop={(e) => void onDrop(e, s._id || s.id || "") }>
+            <div key={s._id || s.id} className="w-[min(18rem,calc(100vw-2rem))] shrink-0 snap-start bg-card border rounded-xl flex flex-col max-h-[70vh]" onDragOver={(e) => e.preventDefault()} onDrop={(e) => void onDrop(e, s._id || s.id || "") }>
               <div className="p-3 border-b flex items-center justify-between">
                 <div className="font-semibold flex items-center gap-2">
                   <span className="size-2 rounded-full" style={{ background: s.color }} /> {s.name}
