@@ -856,7 +856,7 @@ function TeamPage() {
 {canManageMembers && (
   <Button
     className="bg-blue-600 hover:bg-blue-700 text-white rounded font-medium gap-1.5 self-end sm:self-center uppercase text-xs tracking-wider px-4 py-2"
-    onClick={() => (isSuperAdmin ? setCompanyManageOpen(true) : setTeamManageOpen(true))}
+    onClick={() => (isSuperAdmin ? setAddCompanyOpen(true) : setTeamManageOpen(true))}
   >
     <Settings className="size-3.5" /> Manage
   </Button>
