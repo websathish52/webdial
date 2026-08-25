@@ -3,6 +3,7 @@ import api from "@/lib/api";
 import { Building2, Plus, Pencil, Trash2, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -297,7 +298,7 @@ function MasterPage() {
             </div>
             <div>
               <Label>Password</Label>
-              <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+              <PasswordInput value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
             </div>
           </div>
           <p className="text-xs text-muted-foreground px-1">
@@ -365,7 +366,7 @@ function MasterPage() {
             </div>
             <div>
               <Label>New Password (optional)</Label>
-              <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Leave blank to keep unchanged" />
+              <PasswordInput value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Leave blank to keep unchanged" />
             </div>
           </div>
           <DialogFooter>

@@ -3,6 +3,7 @@ import { useCurrentMember, normalizeRole, defaultTelecallerPerms, fullPerms, def
 import api, { getSelectedCompanyId, setSelectedCompanyId } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1148,7 +1149,7 @@ function MemberDialog({
           </div>
           <div>
             <Label className="text-gray-700">Password {member ? "" : "*"}</Label>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={member ? "Leave blank to keep unchanged" : ""} />
+            <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} placeholder={member ? "Leave blank to keep unchanged" : ""} />
           </div>
           <div>
             <Label className="text-gray-700">Role *</Label>

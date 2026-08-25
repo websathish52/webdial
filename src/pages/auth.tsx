@@ -4,6 +4,7 @@ import { store, useStore, setBackendSession, clearSession } from "@/lib/mock-sto
 import api, { setSelectedCompanyId } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Phone } from "lucide-react";
 import { toast } from "sonner";
@@ -135,7 +136,7 @@ function AuthPage() {
             <p className="text-sm text-muted-foreground">Enter your email and password to continue.</p>
           </div>
           <div><Label>Email or username</Label><Input value={user} onChange={e=>setUser(e.target.value)} required disabled={loading}/></div>
-          <div><Label>Password</Label><Input type="password" value={pw} onChange={e=>setPw(e.target.value)} required disabled={loading}/></div>
+          <div><Label>Password</Label><PasswordInput value={pw} onChange={e=>setPw(e.target.value)} required disabled={loading}/></div>
           <Button type="submit" className="w-full bg-primary" disabled={loading}>{loading ? 'Signing in...' : 'Sign in'}</Button>
               <Button  className="w-full bg-primary"><a href="/contact">Create account</a></Button>
 
