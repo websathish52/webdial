@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Phone, Play, Pause, SkipForward, PhoneOff, ArrowLeft, Settings2, Mic, MicOff } from "lucide-react";
+import { Phone, Play, Pause, SkipForward, PhoneOff, ArrowLeft, Settings2, Mic, MicOff, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
 
@@ -71,9 +71,10 @@ function DialerPage() {
   const [inCall, setInCall] = useState(false);
   const [timer, setTimer] = useState(0);
   const [notes, setNotes] = useState("");
-  const [gap, setGap] = useState(3);
-  const [gapDraft, setGapDraft] = useState("3");
+  const [gap, setGap] = useState(5);
+  const [gapDraft, setGapDraft] = useState("5");
   const [gapCountdown, setGapCountdown] = useState(0);
+  const [autoAdvance, setAutoAdvance] = useState(false);
   const [dispoOpen, setDispoOpen] = useState(false);
   const [pendingDuration, setPendingDuration] = useState(0);
   const [recording, setRecording] = useState(true);
@@ -83,6 +84,19 @@ function DialerPage() {
   const mediaRecRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recordingStopResolveRef = useRef<((url?: string) => void) | null>(null);
+
+  const loadDialerSettings = async () => {
+    try {
+      const settings = await api.getSettings();
+      const savedGap = Number(settings?.dialGap);
+      if (Number.isFinite(savedGap) && savedGap >= 0) {
+        setGap(savedGap);
+        setGapDraft(String(savedGap));
+      }
+    } catch (err) {
+      console.warn("Could not load dialer settings:", err);
+    }
+  };
 
   const loadData = async () => {
     if (!member) return;
@@ -129,6 +143,7 @@ function DialerPage() {
   useEffect(() => {
     if (member) {
       void loadData();
+      void loadDialerSettings();
     }
     const handleCrmUpdated = () => { void loadData(); };
     window.addEventListener('ifox-crm-updated', handleCrmUpdated);
@@ -252,6 +267,12 @@ function DialerPage() {
     window.location.href = `tel:${current.phone}`;
   };
 
+  useEffect(() => {
+    if (!autoAdvance || gapCountdown !== 0 || !running || inCall) return;
+    setAutoAdvance(false);
+    startCall();
+  }, [autoAdvance, gapCountdown, running, inCall, current]);
+
   const endCallCapture = async () => {
     if (timerRef.current) window.clearInterval(timerRef.current);
     const savedRecordingUrl = await stopRecording();
@@ -287,7 +308,7 @@ function DialerPage() {
               // NOTE: after loadData(), `queue` is recomputed team-wide (called lead is now excluded),
               // so idx 0 already points at the next fresh lead — reset instead of incrementing.
               setIdx(0);
-              setTimeout(() => startCall(), 100);
+              setAutoAdvance(true);
               return 0;
             }
             return c - 1;
@@ -305,6 +326,7 @@ function DialerPage() {
     if (timerRef.current) window.clearInterval(timerRef.current);
     if (gapRef.current) window.clearInterval(gapRef.current);
     setGapCountdown(0);
+    setAutoAdvance(false);
   };
 
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -427,7 +449,9 @@ function DialerPage() {
               const nextGap = Math.max(0, Number.parseInt(gapDraft, 10) || 0);
               setGap(nextGap);
               setGapDraft(String(nextGap));
-              toast.success(`Gap applied: ${nextGap}s`);
+              void api.updateSettings({ dialGap: nextGap })
+                .then(() => toast.success(`Gap saved: ${nextGap}s`))
+                .catch((err: any) => toast.error(err?.message || "Could not save call gap"));
             }}
           >
             Apply
@@ -444,6 +468,7 @@ function DialerPage() {
             Duration: <span className="font-mono font-semibold">{fmt(pendingDuration)}</span>
             {recordingUrl && <span className="ml-2 text-primary">· Recording saved</span>}
           </div>
+          {current?.phone && <a href={`https://wa.me/${String(current.phone).replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-green-700 hover:underline"><MessageCircle className="size-4" /> WhatsApp this number</a>}
           <div className="text-xs font-semibold mt-2">Select disposition to continue</div>
           <div className="grid grid-cols-2 gap-2">
             {DISPOSITIONS.filter((d) => d.key !== "new").map((d) => (

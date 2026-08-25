@@ -167,7 +167,8 @@ exports.getSettings = async (req, res) => {
   try {
     let settings = await Settings.findOne({ user: req.user._id });
     if (!settings) {
-      settings = new Settings({ user: req.user._id });
+      if (!req.user.companyId) return res.json({ dialGap: 5 });
+      settings = new Settings({ user: req.user._id, companyId: req.user.companyId });
       await settings.save();
     }
     res.json(settings);
@@ -181,9 +182,16 @@ exports.updateSettings = async (req, res) => {
   try {
     let settings = await Settings.findOne({ user: req.user._id });
     if (!settings) {
-      settings = new Settings({ user: req.user._id });
+      if (!req.user.companyId) return res.status(400).json({ message: 'Company context missing' });
+      settings = new Settings({ user: req.user._id, companyId: req.user.companyId });
     }
 
+    if (req.body.dialGap !== undefined) {
+      const dialGap = Number(req.body.dialGap);
+      if (!Number.isInteger(dialGap) || dialGap < 0 || dialGap > 3600) {
+        return res.status(400).json({ message: 'Dial gap must be a whole number between 0 and 3600 seconds' });
+      }
+    }
     Object.assign(settings, req.body);
     await settings.save();
     await logAudit(req.user._id, 'Updated settings', 'Settings', { userId: req.user._id });
