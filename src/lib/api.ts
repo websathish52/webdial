@@ -271,7 +271,10 @@ export async function uploadFile(formData: FormData) {
   const res = await fetch(API_BASE + '/api/uploads', { method: 'POST', body: formData, headers });
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) clearAuthStorage();
-    throw new Error('Upload failed');
+    const text = await res.text();
+    let json;
+    try { json = JSON.parse(text); } catch { json = { message: text }; }
+    throw new Error(json.message || res.statusText || 'Upload failed');
   }
   return res.json();
 }
