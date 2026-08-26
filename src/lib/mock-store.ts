@@ -48,19 +48,19 @@ export type MemberFlags = {
 };
 export const defaultFlags = (): MemberFlags => ({
   accessCrmOnApp: true, modifyMember: false, skipCall: false, deleteList: false,
-  mobileRecording: false, enableWhatsapp: true, allowAllListAccess: false,
+  mobileRecording: false, enableWhatsapp: true, allowAllListAccess: true,
   callLogAccess: true, disableExportList: false, disableContactDelete: false,
   markAttendance: false, captureLocation: false, capturePhoto: false, enableSessionLock: false,
 });
 export const newTelecallerFlags = (): MemberFlags => ({
   accessCrmOnApp: false, modifyMember: false, skipCall: false, deleteList: false,
-  mobileRecording: false, enableWhatsapp: true, allowAllListAccess: false,
+  mobileRecording: false, enableWhatsapp: true, allowAllListAccess: true,
   callLogAccess: true, disableExportList: false, disableContactDelete: false,
   markAttendance: false, captureLocation: false, capturePhoto: false, enableSessionLock: false,
 });
 export const defaultTelecallerPerms = (): Permissions => ({
-  crm: true, team: false, whatsapp: true, reports: true, tools: true, marketing: false,
-  pbx: false, subscribe: false, payment: true, integration: false, recording: false, settings: true,
+  crm: true, team: true, whatsapp: true, reports: true, tools: true, marketing: true,
+  pbx: true, subscribe: true, payment: true, integration: true, recording: true, settings: true,
 });
 export const fullPerms = (): Permissions => ({
   crm: true, team: true, whatsapp: true, reports: true, tools: true, marketing: true,

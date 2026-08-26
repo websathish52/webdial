@@ -590,14 +590,13 @@ function TeamPage() {
           
           let companiesToDisplay: Array<{ _id: string; companyName: string }> = [];
 
-          if (isMeSuperAdminCard && !m.companyName) {
-            // This is the SuperAdmin's own card, and they don't have an explicit companyName
+          if (isMeSuperAdminCard) {
+            // The SuperAdmin card represents the owner and must show the
+            // selected company, or every company in the All companies view.
             if (selectedCompanyId) {
-              // If a specific company is selected in the dropdown, show only that company's name
               const found = companies.find((c) => c._id === selectedCompanyId);
               if (found) companiesToDisplay = [found];
             } else if (companies.length > 0) {
-              // If "All companies" is selected, show a tag for every company
               companiesToDisplay = companies;
             }
           } else if (m.companyName) {
@@ -1084,7 +1083,7 @@ function MemberDialog({
     const currentRole = normalizeRole(member?.role);
     if (currentRole === "SuperAdmin" || (!member && currentRole !== "Telecaller")) {
       setLists(dialogScopedLists);
-    } else if (memberAllowsAllLists) {
+    } else if (memberAllowsAllLists || (!member && flags.allowAllListAccess)) {
       setLists(dialogScopedLists);
     } else {
       setLists(memberLists.filter((list) => dialogScopedLists.includes(list)));
