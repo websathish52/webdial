@@ -25,13 +25,12 @@ function getUserListNames(user) {
 
 async function authorizeListByName(listName, req) {
   const query = buildTenantFilter(req, { name: listName });
-  if (isAdminRole(req.user.role)) {
+  if (isAdminRole(req.user.role) || req.user.flags?.allowAllListAccess) {
     return await List.findOne(query);
   }
 
   const ids = getUserIdReferences(req.user);
   query.$or = [
-    { createdBy: { $in: ids } },
     { assignedTo: { $in: ids } },
   ];
   const listNames = getUserListNames(req.user);
@@ -43,7 +42,7 @@ async function authorizeListByName(listName, req) {
 
 async function getAccessibleUploadListNames(req) {
   const companyFilter = buildTenantFilter(req, {});
-  if (isAdminRole(req.user.role)) {
+  if (isAdminRole(req.user.role) || req.user.flags?.allowAllListAccess) {
     const lists = await List.find(companyFilter).select('name');
     return lists.map((l) => l.name);
   }
@@ -53,7 +52,6 @@ async function getAccessibleUploadListNames(req) {
   const query = {
     ...companyFilter,
     $or: [
-      { createdBy: { $in: ids } },
       { assignedTo: { $in: ids } },
       ...(listNames.length ? [{ name: { $in: listNames } }] : []),
     ],

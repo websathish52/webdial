@@ -14,7 +14,7 @@ import { toast } from "sonner";
 
 
 type LeadRecord = { _id?: string; id?: string; name: string; phone: string; email?: string; disposition: Disposition; list: string; totalDuration: number; createdAt?: string };
-type ListItem = { _id?: string; id?: string; name: string; assignedTo?: Array<{ _id?: string; id?: string; name?: string } | string> };
+type ListItem = { _id?: string; id?: string; name: string; assignedTo: Array<{ _id?: string; id?: string; name?: string } | string> };
 type CallLogRecord = { _id?: string; id?: string; leadId?: string | { _id?: string; id?: string }; phone: string; name: string; agent?: string | { _id?: string; id?: string; name?: string }; duration: number; disposition: Disposition; notes?: string; calledAt: string; recordingUrl?: string };
 type MemberRecord = { _id?: string; id?: string; name: string; role?: string; email?: string; username?: string; lists?: string[] };
 
@@ -51,13 +51,13 @@ function DialerPage() {
 
   const isAdmin = ["superadmin", "admin"].includes(String(member?.role || "").toLowerCase());
   const memberKey = normalizeMemberKey((member as any)?._id || member?.id || member?.username || member?.email || "");
-  const availableLists = isAdmin
+  const availableLists = isAdmin || member?.flags?.allowAllListAccess
     ? lists.map((l: ListItem) => l.name)
     : lists
         .filter((l: ListItem) => {
           if (!memberKey) return false;
-          if (!l.assignedTo?.length) return true;
-          const assignedToMatch = l.assignedTo.some((assignee) => {
+          const assignedTo = Array.isArray((l as any).assignedTo) ? (l as any).assignedTo as ListItem["assignedTo"] : [];
+          const assignedToMatch = assignedTo.some((assignee) => {
             const assigneeKey = normalizeMemberKey(assignee);
             return assigneeKey === memberKey || member?.lists?.includes(l.name);
           });
@@ -112,15 +112,15 @@ function DialerPage() {
         api.getCallLogs({ limit: 50000, scope: 'team' }),
       ]);
       const nextLeads = Array.isArray(leadsRes?.leads) ? leadsRes.leads : [];
-      const nextLists = Array.isArray(listsRes) ? listsRes : (listsRes?.lists || []);
+      const nextLists = (Array.isArray(listsRes) ? listsRes : (listsRes?.lists || [])).map((list: ListItem) => ({ ...list, assignedTo: list.assignedTo ?? [] }));
       const nextCalls = Array.isArray(callsRes?.calls) ? callsRes.calls : [];
-      const nextAvailableLists = isAdmin
+      const nextAvailableLists = isAdmin || member?.flags?.allowAllListAccess
         ? nextLists.map((l: ListItem) => l.name)
         : nextLists
             .filter((l: ListItem) => {
               if (!memberKey) return false;
-              if (!l.assignedTo?.length) return true;
-              return l.assignedTo.some((assignee) => {
+              const assignedTo = Array.isArray((l as any).assignedTo) ? (l as any).assignedTo as ListItem["assignedTo"] : [];
+              return assignedTo.some((assignee) => {
                 if (typeof assignee === "string") return assignee === memberKey;
                 return assignee._id === memberKey || assignee.id === memberKey;
               }) || Boolean(member?.lists?.includes(l.name));

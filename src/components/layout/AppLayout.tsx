@@ -17,7 +17,6 @@ export default function AppLayout() {
   const [loadingProgress, setLoadingProgress] = useState(1);
   const [navigationLoading, setNavigationLoading] = useState(false);
   const [storageFullMessage, setStorageFullMessage] = useState("");
-  const navigationStartPathRef = useRef(location.pathname);
   const navigationTimerRef = useRef<number | null>(null);
   const navigationHideTimerRef = useRef<number | null>(null);
 
@@ -48,7 +47,6 @@ export default function AppLayout() {
       if (navigationHideTimerRef.current) window.clearTimeout(navigationHideTimerRef.current);
       if (navigationTimerRef.current) window.clearInterval(navigationTimerRef.current);
       setNavigationLoading(true);
-      navigationStartPathRef.current = window.location.pathname;
       setLoadingProgress(8);
       navigationTimerRef.current = window.setInterval(() => {
         setLoadingProgress((progress) => progress < 92 ? Math.min(92, progress + Math.max(1, Math.round((92 - progress) * 0.12))) : progress);
@@ -67,15 +65,8 @@ export default function AppLayout() {
     };
   }, []);
   useEffect(() => {
-    if (!navigationLoading || location.pathname === navigationStartPathRef.current) return;
-    if (navigationTimerRef.current) window.clearInterval(navigationTimerRef.current);
-    if (navigationHideTimerRef.current) window.clearTimeout(navigationHideTimerRef.current);
-    setLoadingProgress(100);
-    navigationHideTimerRef.current = window.setTimeout(() => {
-      setNavigationLoading(false);
-      navigationHideTimerRef.current = null;
-    }, 180);
-  }, [location.pathname, navigationLoading]);
+    window.dispatchEvent(new CustomEvent("ifox-navigation-loading"));
+  }, [location.pathname]);
 
   if (!member) return <Navigate to="/auth" replace />;
 

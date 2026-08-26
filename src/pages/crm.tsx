@@ -104,7 +104,15 @@ function CRM() {
   // "All Leads" is a virtual, always-present entry — not backed by a List document.
   // It's pinned first in the dropdown and represents the merged, deduped view
   // across every imported list.
-  const listNames = useMemo(() => [ALL_LEADS, ...listItems.map(l => l.name)], [listItems]);
+  const accessibleListNames = useMemo(() => {
+    const role = String(member?.role || "").toLowerCase();
+    if (["master", "superadmin", "admin"].includes(role) || member?.flags?.allowAllListAccess) {
+      return listItems.map((list) => list.name);
+    }
+    const assignedNames = new Set(member?.lists || []);
+    return listItems.filter((list) => assignedNames.has(list.name)).map((list) => list.name);
+  }, [listItems, member]);
+  const listNames = useMemo(() => [ALL_LEADS, ...accessibleListNames], [accessibleListNames]);
   const listIdByName = useMemo(() => Object.fromEntries(listItems.map(l => [l.name, l._id || l.id || ""])), [listItems]);
 
   const loadData = async () => {

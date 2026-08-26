@@ -15,7 +15,7 @@ function normalizeSkip(value) {
   return Number.isNaN(num) ? 0 : num;
 }
 
-async function applyListAccessFilter(req, filter) {
+async function applyListAccessFilter(req, filter, field = 'list') {
   const role = String(req.user?.role || '').toLowerCase();
   if (['master', 'superadmin', 'admin'].includes(role) || req.user?.flags?.allowAllListAccess) return filter;
 
@@ -24,10 +24,9 @@ async function applyListAccessFilter(req, filter) {
     $or: [
       { name: { $in: Array.isArray(req.user?.lists) ? req.user.lists : [] } },
       { assignedTo: req.user._id },
-      { assignedTo: { $size: 0 } },
     ],
   }).select('name').lean();
-  filter.list = { $in: assignedLists.map((list) => list.name) };
+  filter[field] = { $in: assignedLists.map((list) => list.name) };
   return filter;
 }
 
@@ -75,6 +74,10 @@ exports.createLead = async (req, res) => {
     if (!name || !phone || !list) return res.status(400).json({ message: 'Missing required fields' });
 
     const companyId = requireCompanyId(req);
+    const listAccess = await applyListAccessFilter(req, { companyId });
+    if (listAccess.list?.$in && !listAccess.list.$in.includes(list)) {
+      return res.status(403).json({ message: 'You do not have access to this list' });
+    }
     const lead = new Lead({ companyId, name, phone, email, list, company, address, remarks, createdBy: req.user._id });
     await lead.save();
     await logAudit(req.user._id, 'Created lead', 'CRM', { leadId: lead._id, list, companyId });
@@ -119,6 +122,12 @@ exports.updateLead = async (req, res) => {
   try {
     const filter = await buildTenantFilterAsync(req, {});
     await applyListAccessFilter(req, filter);
+    if (req.body.list) {
+      const targetAccess = await applyListAccessFilter(req, { companyId: filter.companyId });
+      if (targetAccess.list?.$in && !targetAccess.list.$in.includes(req.body.list)) {
+        return res.status(403).json({ message: 'You do not have access to the target list' });
+      }
+    }
     const lead = await Lead.findOneAndUpdate({ _id: req.params.id, ...filter }, req.body, { new: true });
     if (!lead) return res.status(404).json({ message: 'Lead not found' });
     await logAudit(req.user._id, 'Updated lead', 'CRM', { leadId: lead._id, disposition: lead.disposition, companyId: lead.companyId });
@@ -149,7 +158,7 @@ exports.deleteLead = async (req, res) => {
 exports.getLists = async (req, res) => {
   try {
     const filter = await buildTenantFilterAsync(req, {});
-    await applyListAccessFilter(req, filter);
+    await applyListAccessFilter(req, filter, 'name');
     const lists = await List.find(filter).populate('createdBy', 'name email').populate('assignedTo', 'name email');
     res.json(lists);
   } catch (err) {

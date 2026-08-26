@@ -1000,6 +1000,8 @@ function MemberDialog({
   const [dialogLists, setDialogLists] = useState<string[]>(availableLists);
   const [perms, setPerms] = useState<Permissions>(member?.permissions ?? defaultTelecallerPerms());
   const [flags, setFlags] = useState<MemberFlags>(member?.flags ?? defaultFlags());
+  const memberLists = member ? (member.lists ?? []) : [];
+  const memberAllowsAllLists = member ? Boolean(member.flags?.allowAllListAccess) : false;
 
   // Team options always reflect the company currently selected *inside
   // this dialog* — important for SuperAdmin, who can pick a company here
@@ -1054,10 +1056,10 @@ function MemberDialog({
 
     // For Telecallers, SuperAdmins, or new members, default to all lists.
     // For other existing members, show their currently assigned lists.
-    if (isEditingAnySuperAdmin || !member) {
+    if (isEditingAnySuperAdmin || (!member && currentRole !== "Telecaller")) {
       setLists(dialogScopedLists);
     } else {
-      setLists(member.lists ?? []);
+      setLists(memberLists);
     }
   }, [member, open, presetCompanyId, presetTeam, selectedCompanyId]);
 
@@ -1080,12 +1082,12 @@ function MemberDialog({
   useEffect(() => {
     if (!open) return;
     const currentRole = normalizeRole(member?.role);
-    if (!member || currentRole === "SuperAdmin") {
+    if (currentRole === "SuperAdmin" || (!member && currentRole !== "Telecaller")) {
       setLists(dialogScopedLists);
-    } else if (member.flags?.allowAllListAccess) {
+    } else if (memberAllowsAllLists) {
       setLists(dialogScopedLists);
     } else {
-      setLists((member.lists || []).filter((list) => dialogScopedLists.includes(list)));
+      setLists(memberLists.filter((list) => dialogScopedLists.includes(list)));
     }
   }, [open, member, dialogScopedLists]);
 

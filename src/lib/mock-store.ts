@@ -54,7 +54,7 @@ export const defaultFlags = (): MemberFlags => ({
 });
 export const newTelecallerFlags = (): MemberFlags => ({
   accessCrmOnApp: false, modifyMember: false, skipCall: false, deleteList: false,
-  mobileRecording: false, enableWhatsapp: true, allowAllListAccess: true,
+  mobileRecording: false, enableWhatsapp: true, allowAllListAccess: false,
   callLogAccess: true, disableExportList: false, disableContactDelete: false,
   markAttendance: false, captureLocation: false, capturePhoto: false, enableSessionLock: false,
 });

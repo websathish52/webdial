@@ -120,13 +120,12 @@ function Dashboard() {
 
   // ⭐ FIX: same "which lists can this agent see" logic used on the Dialer page —
   // admins see every list; agents see only lists assigned to them (or unassigned/open lists).
-  const myListNames = isAdmin
+  const myListNames = isAdmin || member?.flags?.allowAllListAccess
     ? lists.map((l) => l.name)
     : lists
         .filter((l) => {
           if (!memberKey) return false;
-          if (!l.assignedTo?.length) return true;
-          const assignedToMatch = l.assignedTo.some((assignee) => {
+          const assignedToMatch = (l.assignedTo || []).some((assignee) => {
             const assigneeKey = normalizeMemberKey(assignee);
             return assigneeKey === memberKey || member?.lists?.includes(l.name);
           });
