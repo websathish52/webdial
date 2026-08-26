@@ -749,7 +749,7 @@ function TeamPage() {
       </div>
 
       {/* Rows Per Page + Pagination */}
-      <div className="flex items-center justify-end text-xs text-gray-500 gap-4 pt-4 border-t">
+      <div className="flex items-center justify-end text-xs text-gray-500 gap-4 pt-4 border-t font-bold">
         <div className="flex items-center gap-1">
           <span>Rows per page:</span>
           <select
@@ -758,7 +758,7 @@ function TeamPage() {
               setRowsPerPage(Number(e.target.value));
               setPage(0);
             }}
-            className="border-b bg-transparent cursor-pointer outline-none"
+            className="border bg-transparent cursor-pointer outline-none"
           >
             {[6, 12, 24, 50].map((n) => (
               <option key={n} value={n}>
@@ -768,7 +768,7 @@ function TeamPage() {
           </select>
         </div>
         <div>{totalCount === 0 ? "0-0 of 0" : `${pageStart + 1}-${pageEnd} of ${totalCount}`}</div>
-        <div className="flex items-center gap-2 text-gray-500 font-bold">
+        <div className="flex items-center gap-2 text-gray-800 font-bold" style={{ fontSize: "24px"}}>
           <button disabled={page === 0} className="disabled:text-gray-300 hover:text-gray-800" onClick={() => setPage((p) => Math.max(0, p - 1))}>
             ‹
           </button>
