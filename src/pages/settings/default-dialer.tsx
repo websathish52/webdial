@@ -3,12 +3,26 @@ import { Phone, MessageCircle, MessageSquare, Star, Plug, Settings2, CheckCircle
 import { BRAND, HeroBanner, SettingsTopBar } from "./_shared";
 import api from "@/lib/api"; // Assuming api.ts exists
 import { toast } from "sonner"; // Assuming sonner for toasts
+import portalIcon from "@/assets/icon.png";
 
 const dialers = [
   "Phone Dialer", "FaceTime", "Vonage", "Bria", "Fiverr MobileVOIP", "Truecaller",
   "Skype", "Google Hangouts", "Magic Jack", "Zoiper", "Line", "Viber",
   "2ndLine", "Satellite", "Knowlarity", "Exotel", "Telecmi",
 ];
+
+const dialerLogos: Record<string, string> = {
+  "Phone Dialer": portalIcon,
+  FaceTime: "https://cdn.simpleicons.org/facetime/007AFF",
+  Vonage: "https://cdn.simpleicons.org/vonage/00C300",
+  Bria: "https://cdn.simpleicons.org/bria/1B75BB",
+  Truecaller: "https://cdn.simpleicons.org/truecaller/168DCE",
+  Skype: "https://cdn.simpleicons.org/skype/00AFF0",
+  Zoiper: "https://cdn.simpleicons.org/zoiper/2C2C2C",
+  Line: "https://cdn.simpleicons.org/line/00C300",
+  Viber: "https://cdn.simpleicons.org/viber/7360F2",
+  Exotel: "https://cdn.simpleicons.org/exotel/EF6C00",
+};
 
 // Assuming a type for dialer settings
 type DialerSettings = {
@@ -77,7 +91,15 @@ export default function DefaultDialerPage() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center">
-                      <Phone className="w-4 h-4 text-gray-500" />
+                      <img
+                        src={dialerLogos[name] || portalIcon}
+                        alt={`${name} logo`}
+                        className="w-5 h-5 object-contain"
+                        onError={(event) => {
+                          event.currentTarget.onerror = null;
+                          event.currentTarget.src = portalIcon;
+                        }}
+                      />
                     </div>
                     <span className="text-sm text-gray-800">{name}</span>
                   </div>

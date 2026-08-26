@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCurrentMember, dispoMeta, type Disposition } from "@/lib/mock-store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Kanban, Plus, Search, Bot, X, GripVertical } from "lucide-react";
+import { Kanban, Plus, Search, Bot, X, GripVertical, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import api, { getSelectedCompanyId } from "@/lib/api";
 import { useDispositionColors } from "@/lib/use-disposition-colors";
@@ -123,6 +123,21 @@ function PipelinePage() {
     }
   };
 
+  const moveCardToStage = async (deal: EnrichedDeal, stageId: string) => {
+    if (!stageId) return;
+    try {
+      if (deal.isTemp) {
+        const newDeal = await api.addDeal({ leadId: deal.sourceLeadId || "", stageId, list: deal.list || "Unassigned" });
+        setDeals((current) => [...current, newDeal]);
+      } else {
+        await api.moveDeal(deal._id || deal.id || "", stageId);
+      }
+      await loadData();
+    } catch (err: any) {
+      toast.error(err?.message || "Could not move deal");
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 space-y-4">
       <div className="bg-[linear-gradient(135deg,#1D4ED8_0%,#2563EB_50%,#60A5FA_100%)] rounded-2xl p-6 text-white shadow-lg">
@@ -174,7 +189,7 @@ function PipelinePage() {
       </div>
 
       <div className="flex gap-3 overflow-x-auto overscroll-x-contain pb-4 touch-pan-x snap-x snap-mandatory">
-        {stages.map((s) => {
+        {stages.map((s, stageIndex) => {
           const isNewStage = (s.name || '').trim().toLowerCase() === 'new';
           const stageDeals = scoped
             .filter((d) => d.stageId === (s._id || s.id))
@@ -268,6 +283,27 @@ function PipelinePage() {
                       <div className="text-xs text-muted-foreground mt-1">{d.lead?.phone || '—'}</div>
                       <div className="text-[11px] text-muted-foreground mt-2">List: {d.list || d.lead?.list || '—'}</div>
                       {d.value ? <div className="text-xs text-blue-600 font-bold mt-1">₹{d.value.toLocaleString()}</div> : null}
+                      <div className="mt-3 flex items-center justify-between gap-2 md:hidden">
+                        <button
+                          type="button"
+                          aria-label={`Move ${contactName} to previous stage`}
+                          className="grid size-8 place-items-center rounded-full border bg-card text-muted-foreground disabled:opacity-30"
+                          disabled={stageIndex === 0}
+                          onClick={() => void moveCardToStage(d, stages[stageIndex - 1]?._id || stages[stageIndex - 1]?.id || "")}
+                        >
+                          <ChevronLeft className="size-4" />
+                        </button>
+                        <span className="text-[10px] font-medium text-muted-foreground">Move stage</span>
+                        <button
+                          type="button"
+                          aria-label={`Move ${contactName} to next stage`}
+                          className="grid size-8 place-items-center rounded-full border bg-card text-muted-foreground disabled:opacity-30"
+                          disabled={stageIndex === stages.length - 1}
+                          onClick={() => void moveCardToStage(d, stages[stageIndex + 1]?._id || stages[stageIndex + 1]?.id || "")}
+                        >
+                          <ChevronRight className="size-4" />
+                        </button>
+                      </div>
                     </div>
                   );
                 })}

@@ -28,6 +28,8 @@ function AuditPage() {
   const [startDate, setStartDate] = useState(toDateInputValue(new Date(Date.now() - 7 * 86400_000)));
   const [endDate, setEndDate] = useState(toDateInputValue(new Date()));
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 5;
 
   const loadData = async (filters?: { actor?: string; action?: string; module?: string; startDate?: string; endDate?: string }) => {
     try {
@@ -69,8 +71,12 @@ function AuditPage() {
   };
 
   useEffect(() => {
+    setPage(1);
     void loadData({ actor: user, action, module, startDate, endDate });
   }, [user, action, module, startDate, endDate, isAdmin, me?.id]);
+
+  const totalPages = Math.max(1, Math.ceil(audit.length / rowsPerPage));
+  const paginatedAudit = audit.slice((page - 1) * rowsPerPage, page * rowsPerPage);
 
   const applyFilters = () => {
     void loadData({ actor: user, action, module, startDate, endDate });
@@ -177,7 +183,7 @@ function AuditPage() {
       <div className="bg-card border rounded-xl p-4 sm:p-6 min-w-0 overflow-hidden">
         <div className="flex items-center gap-2 mb-4"><FileClock className="size-5 text-blue-600"/> <h3 className="font-semibold">Activity Timeline</h3></div>
         <div className="relative max-w-full overflow-x-auto pl-6 border-l-2 border-blue-200 space-y-6">
-          {audit.map((a) => (
+          {paginatedAudit.map((a) => (
             <div key={a.id} className="relative min-w-0 break-words">
               <div className="absolute -left-[29px] top-0 size-4 rounded-full bg-blue-500 ring-4 ring-blue-100"/>
               <div className="text-sm">{a.action} by <b>{typeof a.actor === "string" ? a.actor : a.actor?.name || "Unknown"}</b>{a.ip ? ` from IP: ${a.ip}` : ""}</div>
@@ -188,6 +194,22 @@ function AuditPage() {
           ))}
           {audit.length === 0 && <div className="text-sm text-muted-foreground">No activity in range.</div>}
         </div>
+        {audit.length > 0 && (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-sm">
+            <span className="text-muted-foreground">
+              {(page - 1) * rowsPerPage + 1}-{Math.min(page * rowsPerPage, audit.length)} of {audit.length}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>
+                Previous
+              </Button>
+              <span className="min-w-16 text-center text-xs text-muted-foreground">Page {page} / {totalPages}</span>
+              <Button variant="outline" size="sm" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page >= totalPages}>
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

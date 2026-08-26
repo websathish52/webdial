@@ -215,6 +215,10 @@ function DialerPage() {
 
   const startRecording = async () => {
     if (!recording) return;
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      toast.error("This browser does not support portal call recording");
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mr = new MediaRecorder(stream);
@@ -241,7 +245,7 @@ function DialerPage() {
       mr.start();
       mediaRecRef.current = mr;
     } catch {
-      /* mic denied */
+      toast.error("Microphone permission is required to save portal recording");
     }
   };
   const stopRecording = () => {

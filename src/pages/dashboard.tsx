@@ -298,8 +298,8 @@ function Dashboard() {
           </div>
         </div>
         <div className="bg-card rounded-xl border p-4 sm:p-6 shadow min-w-0 overflow-hidden">
-          <h3 className="font-semibold mb-2">Daily Calls (Last 7 Days Performance)</h3>
-          <div className="h-[280px] w-full min-w-0">
+          <h3 className="font-semibold mb-2 ">Daily Calls (Last 7 Days Performance)</h3>
+          <div className="h-[280px] w-full min-w-0 mt-10">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={dailyCallsData} barCategoryGap="18%" barGap={3}>
               <XAxis dataKey="day" tick={{ fontSize: 12 }} />

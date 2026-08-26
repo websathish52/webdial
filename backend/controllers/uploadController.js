@@ -6,6 +6,7 @@ const CompanySettings = require('../models/CompanySettings');
 const Lead = require('../models/Lead');
 const List = require('../models/List'); // Assuming S3 service exists for production
 const { buildTenantFilter, requireCompanyId, isSuperAdmin } = require('../middleware/tenant');
+const { assertStorageAvailable, syncStorageUsage } = require('../utils/storageLimit');
 
 const ADMIN_ROLES = ['superadmin', 'admin'];
 const MAX_IMPORT_ROWS = 25000;
@@ -229,6 +230,10 @@ exports.uploadFile = async (req, res) => {
   if (!listName && purpose !== 'call-recording') return res.status(400).json({ message: 'List name required' });
   if (purpose === 'call-recording') {
     const file = req.file;
+    try { await assertStorageAvailable(companyId, file.size); } catch (err) {
+      try { fs.unlinkSync(file.path); } catch {}
+      return res.status(err.statusCode || 500).json({ message: err.message, storageFull: Boolean(err.storageFull) });
+    }
     const publicUrl = `/uploads/${file.filename}`;
     const record = await Upload.create({
       filename: file.filename,
@@ -242,6 +247,7 @@ exports.uploadFile = async (req, res) => {
       listName: 'asset_call-recording',
       status: 'uploaded',
     });
+    await syncStorageUsage(companyId);
     return res.status(201).json({ file: { _id: record._id, url: publicUrl, path: publicUrl, filename: record.filename } });
   }
   const authorizedList = await authorizeListByName(listName, req);
@@ -251,6 +257,10 @@ exports.uploadFile = async (req, res) => {
   fs.mkdirSync(uploadsDir, { recursive: true });
 
   const file = req.file;
+  try { await assertStorageAvailable(companyId, file.size); } catch (err) {
+    try { fs.unlinkSync(file.path); } catch {}
+    return res.status(err.statusCode || 500).json({ message: err.message, storageFull: Boolean(err.storageFull) });
+  }
   const publicUrl = `/uploads/${file.filename}`;
   const record = await Upload.create({
     filename: file.filename,

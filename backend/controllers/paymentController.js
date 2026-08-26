@@ -1,8 +1,35 @@
 const Payment = require('../models/Payment');
+const CompanySettings = require('../models/CompanySettings');
 const { requireCompanyId } = require('../middleware/tenant');
 
 const cycleMonths = { monthly: 1, halfyearly: 6, yearly: 12 };
 const planPrices = { Starter: 199, Pro: 499 };
+const emptyPaymentProfile = {
+  company: '', firstName: '', lastName: '', email: '', phone: '', address: '',
+  state: '', city: '', pincode: '', country: 'India', gstin: '',
+};
+
+exports.getProfile = async (req, res) => {
+  try {
+    const companyId = requireCompanyId(req);
+    const settings = await CompanySettings.findOne({ companyId }).select('paymentProfile').lean();
+    res.json({ ...emptyPaymentProfile, ...(settings?.paymentProfile || {}) });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const companyId = requireCompanyId(req);
+    const profile = { ...emptyPaymentProfile };
+    for (const key of Object.keys(profile)) profile[key] = String(req.body?.[key] ?? profile[key]).trim();
+    const settings = await CompanySettings.findOneAndUpdate(
+      { companyId },
+      { $set: { paymentProfile: profile } },
+      { new: true, upsert: true, setDefaultsOnInsert: true },
+    ).select('paymentProfile').lean();
+    res.json(settings.paymentProfile);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
 
 exports.list = async (req, res) => {
   try {

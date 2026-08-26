@@ -3,6 +3,7 @@ const Upload = require('../models/Upload');
 const User = require('../models/User');
 const fs = require('fs');
 const path = require('path');
+const { assertStorageAvailable, syncStorageUsage } = require('../utils/storageLimit');
 
 // Helper to get or create settings for a company
 const getOrCreateSettings = async (companyId) => {
@@ -90,7 +91,7 @@ exports.getCompanyInfo = async (req, res) => {
     }
     res.json(companyInfo);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.statusCode || 500).json({ message: err.message, storageFull: Boolean(err.storageFull) });
   }
 };
 
@@ -102,7 +103,7 @@ exports.updateCompanyInfo = async (req, res) => {
     await settings.save();
     res.json(settings.companyInfo);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.statusCode || 500).json({ message: err.message, storageFull: Boolean(err.storageFull) });
   }
 };
 
@@ -116,6 +117,7 @@ exports.uploadCompanyLogo = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: 'No file uploaded' });
     }
+    if (!isOwnContext(req)) await assertStorageAvailable(req.companyId, req.file.size);
 
     if (isOwnContext(req)) {
       const oldUrl = req.user.logoUrl;
@@ -131,10 +133,11 @@ exports.uploadCompanyLogo = async (req, res) => {
 
     settings.companyInfo.logoUrl = logoUrl;
     await settings.save();
+    await syncStorageUsage(req.companyId);
     if (oldUrl) tryDeleteFile(oldUrl);
     res.json({ logoUrl });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.statusCode || 500).json({ message: err.message, storageFull: Boolean(err.storageFull) });
   }
 };
 
@@ -197,6 +200,7 @@ exports.uploadKYCDocument = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: 'No file uploaded' });
     }
+    await assertStorageAvailable(req.companyId, req.file.size);
     const settings = await getOrCreateSettings(req.companyId);
     const docUrl = saveBufferAndGetUrl(`companies/${req.companyId}`, req.file);
 
@@ -208,13 +212,14 @@ exports.uploadKYCDocument = async (req, res) => {
     settings.markModified('kycDetails');
 
     await settings.save();
+    await syncStorageUsage(req.companyId);
     if (oldUrl) tryDeleteFile(oldUrl);
     // The frontend expects the specific field (`idDocUrl` or `regDocUrl`)
     // to be present in the response. Returning the whole object is safer
     // and ensures the frontend state is fully synchronized.
     res.json({ ...settings.kycDetails.toObject(), [field]: docUrl });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.statusCode || 500).json({ message: err.message, storageFull: Boolean(err.storageFull) });
   }
 };
 
@@ -444,6 +449,7 @@ exports.getStorageUsage = async (req, res) => {
       settings.companyInfo.logoUrl,
       settings.kycDetails.idDocUrl,
       settings.kycDetails.regDocUrl,
+      ...(settings.messageTemplates || []).map((template) => template.attachmentUrl),
     ].filter(Boolean);
     for (const url of storedDocumentUrls) {
       const relativePath = String(url).replace(/^\/uploads\//, '');
@@ -466,7 +472,9 @@ exports.uploadMessageTemplateAttachment = async (req, res) => {
   try {
     if (isOwnContext(req)) return requireCompanySelectedResponse(res);
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+    await assertStorageAvailable(req.companyId, req.file.size);
     const attachmentUrl = saveBufferAndGetUrl(`companies/${req.companyId}/templates`, req.file);
+    await syncStorageUsage(req.companyId);
     res.status(201).json({
       attachmentUrl,
       attachmentName: req.file.originalname,
@@ -474,6 +482,6 @@ exports.uploadMessageTemplateAttachment = async (req, res) => {
       attachmentSize: req.file.size,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.statusCode || 500).json({ message: err.message, storageFull: Boolean(err.storageFull) });
   }
 };

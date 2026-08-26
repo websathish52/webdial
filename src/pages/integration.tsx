@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import portalIcon from "@/assets/icon.png";
 
 type IntegrationItem = { id: string; name: string; description: string; connected: boolean; icon: string; logoUrl?: string };
 
@@ -44,7 +45,17 @@ function IntegrationPage() {
         {items.map(i => (
           <div key={i.id} className="bg-card rounded-xl border p-5 min-w-0">
             <div className="flex items-start justify-between mb-3">
-              <div className="size-11 rounded-xl bg-primary/10 text-primary grid place-items-center text-xl font-bold">{i.logoUrl ? <img src={i.logoUrl} alt={`${i.name} logo`} className="size-7 object-contain" /> : i.icon}</div>
+              <div className="size-11 rounded-xl bg-primary/10 text-primary grid place-items-center text-xl font-bold">
+                <img
+                  src={i.logoUrl || portalIcon}
+                  alt={`${i.name} logo`}
+                  className="size-7 object-contain"
+                  onError={(event) => {
+                    event.currentTarget.onerror = null;
+                    event.currentTarget.src = portalIcon;
+                  }}
+                />
+              </div>
               {i.connected && <span className="text-xs bg-success/20 text-success px-2 py-1 rounded">Connected</span>}
             </div>
             <h3 className="font-semibold">{i.name}</h3>

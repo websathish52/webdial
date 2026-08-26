@@ -39,7 +39,8 @@ export default function StoragePage() {
     void loadStorageUsage();
   }, []);
 
-  const pct = (storageUsage.used / storageUsage.total) * 100;
+  const pct = Math.min(100, (storageUsage.used / storageUsage.total) * 100);
+  const storageFull = storageUsage.used >= storageUsage.total;
 
   if (loading) {
     return (
@@ -63,10 +64,11 @@ export default function StoragePage() {
               </div>
               <div className="text-right">
                 <div className="text-xs text-gray-500">Total Usage</div>
-                <div className="text-2xl font-bold text-gray-900">{storageUsage.used}MB / {storageUsage.total}MB</div>
+                <div className={`text-2xl font-bold ${storageFull ? "text-red-600" : "text-gray-900"}`}>{storageUsage.used}MB / {storageUsage.total}MB</div>
                 <div className="w-56 h-1.5 rounded-full bg-gray-100 mt-1 overflow-hidden">
-                  <div className="h-full" style={{ width: `${pct}%`, backgroundColor: BRAND }} /> {/* Use storageUsage.used and storageUsage.total */}
+                  <div className={`h-full ${storageFull ? "bg-red-600" : ""}`} style={{ width: `${pct}%`, backgroundColor: storageFull ? undefined : BRAND }} />
                 </div>
+                {storageFull && <div className="mt-2 text-xs font-semibold text-red-600">Storage full. Upload and import are disabled.</div>}
               </div>
             </div>
 

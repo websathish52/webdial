@@ -16,6 +16,7 @@ export default function AppLayout() {
   const [apiLoading, setApiLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(1);
   const [navigationLoading, setNavigationLoading] = useState(false);
+  const [storageFullMessage, setStorageFullMessage] = useState("");
   const navigationStartPathRef = useRef(location.pathname);
   const navigationTimerRef = useRef<number | null>(null);
   const navigationHideTimerRef = useRef<number | null>(null);
@@ -33,6 +34,14 @@ export default function AppLayout() {
     };
     window.addEventListener("ifox-api-loading", handleLoading);
     return () => window.removeEventListener("ifox-api-loading", handleLoading);
+  }, []);
+  useEffect(() => {
+    const handleStorageFull = (event: Event) => {
+      const detail = (event as CustomEvent<{ message?: string }>).detail;
+      setStorageFullMessage(detail?.message || "Storage limit reached. Delete files or upgrade storage.");
+    };
+    window.addEventListener("ifox-storage-full", handleStorageFull);
+    return () => window.removeEventListener("ifox-storage-full", handleStorageFull);
   }, []);
   useEffect(() => {
     const handleNavigationLoading = () => {
@@ -115,6 +124,16 @@ export default function AppLayout() {
               </div>
             </div>
             <div className="text-sm font-semibold text-foreground">Loading {loadingProgress}%</div>
+          </div>
+        </div>
+      )}
+      {storageFullMessage && (
+        <div className="fixed inset-0 z-[110] grid place-items-center bg-black/40 p-4" role="alertdialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-2xl border-2 border-red-500 bg-card p-6 text-center shadow-2xl">
+            <div className="mx-auto mb-3 grid size-14 place-items-center rounded-full bg-red-100 text-2xl text-red-600">!</div>
+            <h2 className="text-lg font-bold text-foreground">Storage limit reached</h2>
+            <p className="mt-2 text-sm text-muted-foreground">{storageFullMessage}</p>
+            <button className="mt-5 rounded-lg bg-red-600 px-5 py-2 text-sm font-semibold text-white" onClick={() => setStorageFullMessage("")}>Close</button>
           </div>
         </div>
       )}

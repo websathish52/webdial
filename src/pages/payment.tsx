@@ -23,6 +23,25 @@ type Invoice = {
   status: "Paid" | "Deleted" | "Pending";
 };
 
+type PaymentProfile = {
+  company: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  state: string;
+  city: string;
+  pincode: string;
+  country: string;
+  gstin: string;
+};
+
+const emptyProfile: PaymentProfile = {
+  company: "", firstName: "", lastName: "", email: "", phone: "", address: "",
+  state: "", city: "", pincode: "", country: "India", gstin: "",
+};
+
 export default function PaymentPage() {
   const [searchParams] = useSearchParams();
   const requestedPlan = searchParams.get("plan") || "Starter";
@@ -36,11 +55,14 @@ export default function PaymentPage() {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null);
   const [profileSaved, setProfileSaved] = useState(false);
-  const [profile, setProfile] = useState({ company: "", name: "", email: "", phone: "" });
+  const [profile, setProfile] = useState<PaymentProfile>(emptyProfile);
   const cycleMultiplier = renewal === "yearly" ? 12 : renewal === "halfyearly" ? 6 : 1;
   const totalAmount = pricePerUser * users * cycleMultiplier;
 
   useEffect(() => {
+    api.getPaymentProfile()
+      .then((savedProfile: Partial<PaymentProfile>) => setProfile({ ...emptyProfile, ...savedProfile }))
+      .catch(err => toast.error(err.message || "Could not load payment profile."));
     api.getPayments()
       .then((payments: any[]) => setInvoices((Array.isArray(payments) ? payments : []).map((payment) => ({
         _id: payment._id,
@@ -55,13 +77,14 @@ export default function PaymentPage() {
   }, []);
 
   const startPayment = async () => {
-    if (!profile.company.trim() || !profile.name.trim() || !profile.email.trim() || !profile.phone.trim()) {
-      toast.error("Please fill and update the payment profile before paying");
+    const requiredFields: Array<keyof PaymentProfile> = ["company", "firstName", "lastName", "email", "phone", "address", "state", "city", "pincode", "country"];
+    if (requiredFields.some((field) => !profile[field].trim())) {
+      toast.error("Please fill all required payment profile fields before paying");
       return;
     }
     setPaying(true);
     try {
-      const payment = await api.createPayment({ plan, pricePerUser, users, cycle: renewal, profile });
+      const payment = await api.createPayment({ plan, pricePerUser, users, cycle: renewal, profile: { ...profile, name: `${profile.firstName} ${profile.lastName}`.trim() } });
       setPendingPaymentId(payment?._id || null);
       setPaymentOpen(true);
     } catch (err: any) { toast.error(err?.message || "Could not create payment"); }
@@ -236,15 +259,33 @@ export default function PaymentPage() {
             <div className="space-y-3">
               <ProfileField label="Company Name *" value={profile.company} onChange={(value) => setProfile({ ...profile, company: value })} />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <ProfileField label="Name *" value={profile.name} onChange={(value) => setProfile({ ...profile, name: value })} />
-                <ProfileField label="Phone *" value={profile.phone} onChange={(value) => setProfile({ ...profile, phone: value })} />
+                <ProfileField label="First Name *" value={profile.firstName} onChange={(value) => setProfile({ ...profile, firstName: value })} />
+                <ProfileField label="Last Name *" value={profile.lastName} onChange={(value) => setProfile({ ...profile, lastName: value })} />
               </div>
               <ProfileField label="E-mail *" value={profile.email} onChange={(value) => setProfile({ ...profile, email: value })} />
+              <ProfileField label="Phone *" value={profile.phone} onChange={(value) => setProfile({ ...profile, phone: value })} />
+              <ProfileField label="Address *" value={profile.address} onChange={(value) => setProfile({ ...profile, address: value })} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <ProfileField label="State *" value={profile.state} onChange={(value) => setProfile({ ...profile, state: value })} />
+                <ProfileField label="City *" value={profile.city} onChange={(value) => setProfile({ ...profile, city: value })} />
+                <ProfileField label="Pincode *" value={profile.pincode} onChange={(value) => setProfile({ ...profile, pincode: value })} />
+                <ProfileField label="Country *" value={profile.country} onChange={(value) => setProfile({ ...profile, country: value })} />
+              </div>
+              <ProfileField label="GSTIN" value={profile.gstin} onChange={(value) => setProfile({ ...profile, gstin: value })} />
             </div>
             <button
               className="mt-4 w-full py-2.5 rounded-md text-white font-semibold"
               style={{ backgroundColor: BRAND }}
-              onClick={() => { setProfileSaved(true); toast.success("Payment profile updated"); }}
+              onClick={async () => {
+                try {
+                  const savedProfile = await api.updatePaymentProfile(profile);
+                  setProfile({ ...emptyProfile, ...savedProfile });
+                  setProfileSaved(true);
+                  toast.success("Payment profile updated");
+                } catch (err: any) {
+                  toast.error(err?.message || "Could not update payment profile");
+                }
+              }}
             >
               {profileSaved ? "UPDATED" : "UPDATE"}
             </button>

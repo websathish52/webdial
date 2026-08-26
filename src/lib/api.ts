@@ -122,6 +122,9 @@ async function request(path: string, opts: RequestInit = {}) {
       const text = await res.text();
       let json;
       try { json = JSON.parse(text); } catch { json = { message: text }; }
+      if (res.status === 507 || json.storageFull) {
+        window.dispatchEvent(new CustomEvent('ifox-storage-full', { detail: { message: json.message } }));
+      }
       const err = new Error(json.message || res.statusText);
       throw err;
     }
@@ -318,6 +321,9 @@ export async function uploadFile(formData: FormData) {
       const text = await res.text();
       let json;
       try { json = JSON.parse(text); } catch { json = { message: text }; }
+      if (res.status === 507 || json.storageFull) {
+        window.dispatchEvent(new CustomEvent('ifox-storage-full', { detail: { message: json.message } }));
+      }
       throw new Error(json.message || res.statusText || 'Upload failed');
     }
     return res.json();
@@ -471,6 +477,8 @@ export async function updateIntegration(provider: string, data: any) { return aw
 export async function getPbxSettings() { return await request('/api/pbx'); }
 export async function updatePbxSettings(data: any) { return await request('/api/pbx', { method: 'PUT', body: JSON.stringify(data) }); }
 export async function getPayments() { return await request('/api/payments'); }
+export async function getPaymentProfile() { return await request('/api/payments/profile'); }
+export async function updatePaymentProfile(profile: any) { return await request('/api/payments/profile', { method: 'PUT', body: JSON.stringify(profile) }); }
 export async function createPayment(data: any) { return await request('/api/payments', { method: 'POST', body: JSON.stringify(data) }); }
 export async function markPaymentPaid(id: string) { return await request(`/api/payments/${id}/paid`, { method: 'PUT' }); }
 
@@ -481,7 +489,7 @@ export default {
   getLists, createList, updateList, deleteList, rechurnList,
   logCall, getCallLogs, getDashboardStats, getRecordings,
   getMembers, getMember, updateMember, updateMemberPassword, deleteMember,
-  getSettings, updateSettings,
+  getSettings, updateSettings, getPaymentProfile, updatePaymentProfile,
   uploadFile, getUploads, deleteUpload,
   getCampaigns, createCampaign, updateCampaign,
   getPipeline, createStage, deleteStage, moveDeal, addDeal,

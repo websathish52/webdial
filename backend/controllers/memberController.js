@@ -119,6 +119,13 @@ exports.updateMember = async (req, res) => {
     }
 
     await member.save();
+    if (flags && flags.mobileRecording !== undefined && member.companyId) {
+      await Settings.findOneAndUpdate(
+        { user: member._id },
+        { user: member._id, companyId: member.companyId, recordCalls: Boolean(flags.mobileRecording) },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      );
+    }
     const safeMember = await User.findById(req.params.id).select('-password');
     await logAudit(req.user._id, 'Updated member', 'Team', { memberId: member._id, name: member.name, companyId: member.companyId });
     res.json(safeMember);
