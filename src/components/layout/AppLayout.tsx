@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { useCurrentMember } from "@/lib/mock-store";
-import webdialLogo from "@/assets/webdial-logo.png";
+import webdialLogo from "@/assets/icon.png";
 
 export default function AppLayout() {
   const member = useCurrentMember();
@@ -15,6 +15,10 @@ export default function AppLayout() {
   const [open, setOpen] = useState(false);
   const [apiLoading, setApiLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(1);
+  const [navigationLoading, setNavigationLoading] = useState(false);
+  const navigationStartPathRef = useRef(location.pathname);
+  const navigationTimerRef = useRef<number | null>(null);
+  const navigationHideTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -30,6 +34,39 @@ export default function AppLayout() {
     window.addEventListener("ifox-api-loading", handleLoading);
     return () => window.removeEventListener("ifox-api-loading", handleLoading);
   }, []);
+  useEffect(() => {
+    const handleNavigationLoading = () => {
+      if (navigationHideTimerRef.current) window.clearTimeout(navigationHideTimerRef.current);
+      if (navigationTimerRef.current) window.clearInterval(navigationTimerRef.current);
+      setNavigationLoading(true);
+      navigationStartPathRef.current = window.location.pathname;
+      setLoadingProgress(8);
+      navigationTimerRef.current = window.setInterval(() => {
+        setLoadingProgress((progress) => progress < 92 ? Math.min(92, progress + Math.max(1, Math.round((92 - progress) * 0.12))) : progress);
+      }, 100);
+      navigationHideTimerRef.current = window.setTimeout(() => {
+        setLoadingProgress(100);
+        setNavigationLoading(false);
+        navigationHideTimerRef.current = null;
+      }, 1500);
+    };
+    window.addEventListener("ifox-navigation-loading", handleNavigationLoading);
+    return () => {
+      window.removeEventListener("ifox-navigation-loading", handleNavigationLoading);
+      if (navigationTimerRef.current) window.clearInterval(navigationTimerRef.current);
+      if (navigationHideTimerRef.current) window.clearTimeout(navigationHideTimerRef.current);
+    };
+  }, []);
+  useEffect(() => {
+    if (!navigationLoading || location.pathname === navigationStartPathRef.current) return;
+    if (navigationTimerRef.current) window.clearInterval(navigationTimerRef.current);
+    if (navigationHideTimerRef.current) window.clearTimeout(navigationHideTimerRef.current);
+    setLoadingProgress(100);
+    navigationHideTimerRef.current = window.setTimeout(() => {
+      setNavigationLoading(false);
+      navigationHideTimerRef.current = null;
+    }, 180);
+  }, [location.pathname, navigationLoading]);
 
   if (!member) return <Navigate to="/auth" replace />;
 
@@ -54,7 +91,7 @@ export default function AppLayout() {
           <Outlet />
         </div>
       </main>
-      {apiLoading && (
+      {(apiLoading || navigationLoading) && (
         <div className="fixed inset-0 z-[100] grid place-items-center bg-background/70 backdrop-blur-sm" role="status" aria-live="polite">
           <div className="flex min-w-40 flex-col items-center gap-3 rounded-2xl border bg-card px-7 py-6 shadow-xl">
             <div className="relative size-28" aria-label={`Loading ${loadingProgress}%`}>

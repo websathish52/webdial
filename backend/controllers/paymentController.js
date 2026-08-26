@@ -2,6 +2,7 @@ const Payment = require('../models/Payment');
 const { requireCompanyId } = require('../middleware/tenant');
 
 const cycleMonths = { monthly: 1, halfyearly: 6, yearly: 12 };
+const planPrices = { Starter: 199, Pro: 499 };
 
 exports.list = async (req, res) => {
   try {
@@ -15,9 +16,9 @@ exports.create = async (req, res) => {
   try {
     const companyId = requireCompanyId(req);
     const { plan, pricePerUser, users, cycle = 'monthly', profile = {} } = req.body;
-    const numericPrice = Number(pricePerUser);
+    const numericPrice = planPrices[plan] || Number(pricePerUser);
     const numericUsers = Number(users);
-    if (!plan || !Number.isFinite(numericPrice) || numericPrice < 0 || !Number.isInteger(numericUsers) || numericUsers < 1) {
+    if (!planPrices[plan] || !Number.isFinite(numericUsers) || !Number.isInteger(numericUsers) || numericUsers < 1) {
       return res.status(400).json({ message: 'Plan, price per user, and user count are required' });
     }
     const amount = numericPrice * numericUsers * (cycleMonths[cycle] || 1);

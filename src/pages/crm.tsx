@@ -98,6 +98,7 @@ function CRM() {
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [moveOpen, setMoveOpen] = useState(false);
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
+  const [removingSelected, setRemovingSelected] = useState(false);
 
   const isAdmin = member?.role === "SuperAdmin" || member?.role === "Admin" || member?.flags?.modifyMember;
   // "All Leads" is a virtual, always-present entry — not backed by a List document.
@@ -362,15 +363,35 @@ function CRM() {
   });
 
   const bulkRemoveSelected = async () => {
-    if (!selectedCount) return;
+    if (!selectedCount || removingSelected) return;
     if (!confirm(`Remove ${selectedCount} selected lead${selectedCount > 1 ? 's' : ''}?`)) return;
+    setRemovingSelected(true);
+    let removedCount = 0;
+    const failedIds: string[] = [];
     try {
-      await Promise.all(selectedLeads.map((lead) => api.deleteLead(lead._id || lead.id || '')));
-      setSelectedIds([]);
+      // Delete one at a time so a large selection does not overwhelm the API;
+      // keep successful deletes even when one lead is unavailable or forbidden.
+      for (const lead of selectedLeads) {
+        const id = lead._id || lead.id || '';
+        if (!id) continue;
+        try {
+          await api.deleteLead(id);
+          removedCount += 1;
+        } catch {
+          failedIds.push(id);
+        }
+      }
+      setSelectedIds((current) => current.filter((id) => failedIds.includes(id)));
       await loadData();
-      toast.success(`${selectedCount} lead${selectedCount > 1 ? 's were' : ' was'} removed`);
+      if (failedIds.length > 0) {
+        toast.error(`${removedCount} removed, ${failedIds.length} could not be removed. Check delete permission and API connection.`);
+      } else {
+        toast.success(`${removedCount} lead${removedCount > 1 ? 's were' : ' was'} removed`);
+      }
     } catch (err: any) {
       toast.error(err?.message || 'Could not remove selected leads');
+    } finally {
+      setRemovingSelected(false);
     }
   };
 
@@ -571,18 +592,20 @@ function CRM() {
             size="sm"
             variant="outline"
             onClick={() => {
-              const ids = filtered.map((l) => l._id || l.id || '').filter(Boolean);
+              const ids = leadsInActiveList.map((l) => l._id || l.id || '').filter(Boolean);
               if (!ids.length) return;
               const allSelected = ids.every((id) => selectedIds.includes(id));
               setSelectedIds((prev) => allSelected ? prev.filter((id) => !ids.includes(id)) : Array.from(new Set([...prev, ...ids])));
             }}
           >
-            {filtered.length > 0 && filtered.every((l) => selectedIds.includes(l._id || l.id || '')) ? 'Deselect all list' : 'Select all list'}
+            {leadsInActiveList.length > 0 && leadsInActiveList.every((l) => selectedIds.includes(l._id || l.id || '')) ? 'Deselect all list' : 'Select all list'}
           </Button>
           <Button size="sm" variant="outline" onClick={() => setMoveOpen(true)}>Move to list</Button>
           <Button size="sm" variant="outline" onClick={() => setBulkAssignOpen(true)}>Set assign</Button>
           <Button size="sm" variant="outline" onClick={() => exportList(selectedLeads, 'selected-leads')}>Export</Button>
-          <Button size="sm" variant="destructive" onClick={() => void bulkRemoveSelected()}>Remove</Button>
+          <Button size="sm" variant="destructive" disabled={removingSelected || Boolean(member?.flags?.disableContactDelete)} onClick={() => void bulkRemoveSelected()}>
+            {removingSelected ? 'Removing...' : 'Remove'}
+          </Button>
           <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])}>Clear</Button>
         </div>
       )}

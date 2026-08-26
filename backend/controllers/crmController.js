@@ -24,6 +24,7 @@ async function applyListAccessFilter(req, filter) {
     $or: [
       { name: { $in: Array.isArray(req.user?.lists) ? req.user.lists : [] } },
       { assignedTo: req.user._id },
+      { assignedTo: { $size: 0 } },
     ],
   }).select('name').lean();
   filter.list = { $in: assignedLists.map((list) => list.name) };

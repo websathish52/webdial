@@ -246,7 +246,10 @@ if (!member) return null;
         {visibleNav.map((item) => {
           const active = pathname === item.to || pathname.startsWith(item.to + "/");
           return (
-          <Link key={item.to} to={item.to} onClick={onClose}
+          <Link key={item.to} to={item.to} onClick={() => {
+            window.dispatchEvent(new CustomEvent("ifox-navigation-loading"));
+            onClose?.();
+          }}
   className={cn(
     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
     active

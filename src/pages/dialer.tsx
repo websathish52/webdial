@@ -123,7 +123,7 @@ function DialerPage() {
               return l.assignedTo.some((assignee) => {
                 if (typeof assignee === "string") return assignee === memberKey;
                 return assignee._id === memberKey || assignee.id === memberKey;
-              });
+              }) || Boolean(member?.lists?.includes(l.name));
             })
             .map((l: ListItem) => l.name);
       setLeads(nextLeads);

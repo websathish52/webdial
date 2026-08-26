@@ -4,11 +4,15 @@ import {
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BRAND, HeroBanner, SettingsTopBar } from "./settings/_shared";
 import api from "@/lib/api";
 import { toast } from "sonner";
+
+const PLAN_PRICES: Record<string, number> = { Starter: 199, Pro: 499 };
+const PAYMENT_UPI_ID = "hduke1439@okaxis";
 
 type Invoice = {
   _id: string;
@@ -21,8 +25,9 @@ type Invoice = {
 
 export default function PaymentPage() {
   const [searchParams] = useSearchParams();
-  const plan = searchParams.get("plan") || "Starter";
-  const pricePerUser = Number(searchParams.get("price")) || 199;
+  const requestedPlan = searchParams.get("plan") || "Starter";
+  const plan = PLAN_PRICES[requestedPlan] ? requestedPlan : "Starter";
+  const pricePerUser = PLAN_PRICES[plan];
   const [renewal, setRenewal] = useState("monthly");
   const [users, setUsers] = useState(4);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -30,6 +35,7 @@ export default function PaymentPage() {
   const [paying, setPaying] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null);
+  const [profileSaved, setProfileSaved] = useState(false);
   const [profile, setProfile] = useState({ company: "", name: "", email: "", phone: "" });
   const cycleMultiplier = renewal === "yearly" ? 12 : renewal === "halfyearly" ? 6 : 1;
   const totalAmount = pricePerUser * users * cycleMultiplier;
@@ -40,7 +46,7 @@ export default function PaymentPage() {
         _id: payment._id,
         date: new Date(payment.createdAt).toLocaleString('en-IN'),
         user: payment.users,
-        amount: `₹${payment.amount.toLocaleString('en-IN')}`,
+        amount: `₹${Number(payment.amount || 0).toLocaleString('en-IN')}`,
         expiry: payment.expiry ? new Date(payment.expiry).toLocaleDateString('en-IN') : '-',
         status: payment.status,
       }))))
@@ -49,6 +55,10 @@ export default function PaymentPage() {
   }, []);
 
   const startPayment = async () => {
+    if (!profile.company.trim() || !profile.name.trim() || !profile.email.trim() || !profile.phone.trim()) {
+      toast.error("Please fill and update the payment profile before paying");
+      return;
+    }
     setPaying(true);
     try {
       const payment = await api.createPayment({ plan, pricePerUser, users, cycle: renewal, profile });
@@ -234,8 +244,9 @@ export default function PaymentPage() {
             <button
               className="mt-4 w-full py-2.5 rounded-md text-white font-semibold"
               style={{ backgroundColor: BRAND }}
+              onClick={() => { setProfileSaved(true); toast.success("Payment profile updated"); }}
             >
-              UPDATE
+              {profileSaved ? "UPDATED" : "UPDATE"}
             </button>
           </div>
         </div>
@@ -244,8 +255,8 @@ export default function PaymentPage() {
         <DialogContent className="max-w-sm text-center">
           <DialogHeader><DialogTitle>Pay with GPay / UPI</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">Scan this dummy QR or pay to the UPI ID below.</p>
-          <img className="mx-auto size-56 rounded-lg border p-2" alt="UPI payment QR" src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(`upi://pay?pa=hduke1439@okaxis&pn=WebDial&am=${totalAmount}&cu=INR`)}`} />
-          <div className="rounded-lg bg-muted p-3 font-mono text-sm">hduke1439@okaxis</div>
+          <img className="mx-auto size-56 rounded-lg border p-2" alt="UPI payment QR" src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(`upi://pay?pa=${PAYMENT_UPI_ID}&pn=WebDial&am=${totalAmount}&cu=INR`)}`} />
+          <div className="rounded-lg bg-muted p-3 font-mono text-sm">{PAYMENT_UPI_ID}</div>
           <div className="text-lg font-bold">₹{totalAmount.toLocaleString('en-IN')}</div>
           <DialogFooter><Button onClick={async () => { if (pendingPaymentId) await api.markPaymentPaid(pendingPaymentId); setPaymentOpen(false); toast.success("Payment marked as paid"); window.location.reload(); }}>I completed payment</Button></DialogFooter>
         </DialogContent>
