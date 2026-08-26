@@ -13,7 +13,7 @@ import {
   Settings as SettingsIcon,
   RotateCw,
 } from "lucide-react";
-import webdialLogo from "@/assets/webdial-jpg.png";
+import webdialLogo from "@/assets/icon.png";
 
 const BRAND = "#4285F4";
 
@@ -51,7 +51,7 @@ export default function SettingsPage() {
         <div className="bg-white rounded-xl shadow-sm p-10">
           <div className="flex flex-col items-center mb-10">
             <div className="w-24 h-24 rounded-full flex items-center justify-center shadow-lg overflow-hidden">
-              <img src={webdialLogo} alt="Web Dial Logo" className="w-full h-auto object-cover" />
+              <img src={webdialLogo} alt="Web Dial Logo" className=" h-auto object-cover" style={{width: "80%"}}/>
             </div>
             {/* <p className="mt-4 text-gray-800 font-medium">Web Dial</p> */}
           </div>
