@@ -67,7 +67,7 @@ export default function Header({ onMenu, dark, onToggleDark }: { onMenu: () => v
     <header className="sticky top-0 z-30 h-14 sm:h-16 bg-card border-b border-border px-3 sm:px-6 flex items-center justify-between gap-2">
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <button className="lg:hidden p-2 rounded-lg hover:bg-accent shrink-0" onClick={onMenu}><Menu className="size-5"/></button>
-        <Phone className="hidden sm:block size-5 text-primary shrink-0" />
+        <Phone className="size-4 sm:size-5 text-primary shrink-0" />
         <h1 className="font-semibold text-base sm:text-lg capitalize truncate">
           {pathname.replace("/","").replace("-"," ") || "Dashboard"}
         </h1>
@@ -83,7 +83,7 @@ export default function Header({ onMenu, dark, onToggleDark }: { onMenu: () => v
             {unreadCount > 0 && <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">{unreadCount > 9 ? '9+' : unreadCount}</span>}
           </Button>
           {showNotifications && (
-            <div className="absolute right-0 top-12 z-50 w-80 max-h-[70vh] overflow-auto rounded-xl border bg-popover p-2 shadow-xl">
+            <div className="absolute right-0 top-12 z-50 w-[min(20rem,calc(100vw-1.5rem))] max-h-[70vh] overflow-auto rounded-xl border bg-popover p-2 shadow-xl">
               <div className="mb-2 px-2 text-sm font-semibold text-foreground">Notifications</div>
               {notifications.length === 0 ? (
                 <div className="px-2 py-4 text-sm text-muted-foreground">No new notifications</div>

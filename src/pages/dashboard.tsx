@@ -260,7 +260,7 @@ function Dashboard() {
   const interestedTodayCount = filteredCallsToday.filter(c => c.disposition === 'interested').length;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-6 space-y-6">
       {/* <div className="flex items-center gap-4">
         <h2 className="text-xl font-semibold">Dashboard</h2>
         <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
@@ -285,10 +285,10 @@ function Dashboard() {
       <div className="grid min-w-0 lg:grid-cols-2 gap-4">
         <div className="bg-card rounded-xl border p-4 sm:p-6 shadow min-w-0 overflow-hidden">
           <h3 className="font-semibold mb-2">Dispositions</h3>
-          <div className="h-[340px] w-full min-w-0">
+          <div className="h-[360px] w-full min-w-0 sm:h-[390px]">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={myDispositionsToday} dataKey="value" cx="50%" cy="38%" outerRadius="34%" innerRadius="18%">
+              <Pie data={myDispositionsToday} dataKey="value" cx="50%" cy="40%" outerRadius={105} innerRadius={52}>
                 {myDispositionsToday.map((d, i) => <Cell key={i} fill={d.color} />)}
               </Pie>
               <Tooltip />

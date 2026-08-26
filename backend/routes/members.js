@@ -15,8 +15,9 @@ router.put('/settings/me', protect, updateSettings);
 // Get single member
 router.get('/:id', protect, getMember);
 
-// Update member info (superadmin only)
-router.put('/:id', protect, requireRole('superadmin'), updateMember);
+// Admins and managers can update members; the controller still prevents
+// self-escalation and restricts permission/flag changes appropriately.
+router.put('/:id', protect, requireRole(['superadmin', 'admin', 'manager']), updateMember);
 
 // Update member password (superadmin only)
 router.put('/:id/password', protect, requireRole('superadmin'), updateMemberPassword);

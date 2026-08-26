@@ -15,12 +15,31 @@ function normalizeSkip(value) {
   return Number.isNaN(num) ? 0 : num;
 }
 
+async function applyListAccessFilter(req, filter) {
+  const role = String(req.user?.role || '').toLowerCase();
+  if (['master', 'superadmin', 'admin'].includes(role) || req.user?.flags?.allowAllListAccess) return filter;
+
+  const assignedLists = await List.find({
+    companyId: filter.companyId,
+    $or: [
+      { name: { $in: Array.isArray(req.user?.lists) ? req.user.lists : [] } },
+      { assignedTo: req.user._id },
+    ],
+  }).select('name').lean();
+  filter.list = { $in: assignedLists.map((list) => list.name) };
+  return filter;
+}
+
 // Get all leads (with filters)
 exports.getLeads = async (req, res) => {
   try {
     const { list, disposition, limit = 50000, skip = 0 } = req.query;
     const filter = await buildTenantFilterAsync(req, {});
-    if (list) filter.list = list;
+    await applyListAccessFilter(req, filter);
+    if (list) {
+      if (filter.list?.$in && !filter.list.$in.includes(list)) return res.json({ leads: [], total: 0 });
+      filter.list = list;
+    }
     if (disposition) filter.disposition = disposition;
 
     const leads = await Lead.find(filter)
@@ -39,6 +58,7 @@ exports.getLeads = async (req, res) => {
 exports.getLead = async (req, res) => {
   try {
     const filter = await buildTenantFilterAsync(req, {});
+    await applyListAccessFilter(req, filter);
     const lead = await Lead.findOne({ _id: req.params.id, ...filter });
     if (!lead) return res.status(404).json({ message: 'Lead not found' });
     res.json(lead);
@@ -71,6 +91,10 @@ exports.importLeads = async (req, res) => {
     if (leads.length > 25000) return res.status(400).json({ message: 'Cannot import more than 25,000 leads at once.' });
 
     const companyId = requireCompanyId(req);
+    const accessFilter = await applyListAccessFilter(req, { companyId });
+    if (accessFilter.list?.$in && !accessFilter.list.$in.includes(list)) {
+      return res.status(403).json({ message: 'You do not have access to this list' });
+    }
     const leadsToInsert = leads.map((l) => ({
       ...l,
       list,
@@ -93,6 +117,7 @@ exports.importLeads = async (req, res) => {
 exports.updateLead = async (req, res) => {
   try {
     const filter = await buildTenantFilterAsync(req, {});
+    await applyListAccessFilter(req, filter);
     const lead = await Lead.findOneAndUpdate({ _id: req.params.id, ...filter }, req.body, { new: true });
     if (!lead) return res.status(404).json({ message: 'Lead not found' });
     await logAudit(req.user._id, 'Updated lead', 'CRM', { leadId: lead._id, disposition: lead.disposition, companyId: lead.companyId });
@@ -106,6 +131,7 @@ exports.updateLead = async (req, res) => {
 exports.deleteLead = async (req, res) => {
   try {
     const filter = await buildTenantFilterAsync(req, {});
+    await applyListAccessFilter(req, filter);
     const lead = await Lead.findOneAndDelete({ _id: req.params.id, ...filter });
     if (!lead) return res.status(404).json({ message: 'Lead not found' });
 
@@ -122,6 +148,7 @@ exports.deleteLead = async (req, res) => {
 exports.getLists = async (req, res) => {
   try {
     const filter = await buildTenantFilterAsync(req, {});
+    await applyListAccessFilter(req, filter);
     const lists = await List.find(filter).populate('createdBy', 'name email').populate('assignedTo', 'name email');
     res.json(lists);
   } catch (err) {

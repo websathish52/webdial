@@ -110,12 +110,24 @@ const routeAccess: Record<string, Member["role"][]> = {
   "/settings": ["SuperAdmin", "Admin", "Manager", "Submanager", "Telecaller"],
 };
 
+const routePermissions: Record<string, keyof Member["permissions"]> = {
+  "/crm": "crm", "/dialer": "crm", "/whatsapp": "whatsapp", "/reports": "reports",
+  "/performance": "reports", "/audit": "reports", "/tools": "tools", "/pipeline": "tools",
+  "/tasks": "tools", "/marketing": "marketing", "/pbx": "pbx", "/subscribe": "subscribe",
+  "/payment": "payment", "/integration": "integration", "/recording": "recording", "/settings": "settings",
+  "/team": "team",
+};
+
 function ProtectedLayout() {
   const member = useCurrentMember();
   const location = useLocation();
   if (!member) return <Navigate to="/auth" replace />;
   const allowed = routeAccess[location.pathname] ?? ["SuperAdmin", "Admin", "Manager", "Submanager", "Telecaller"];
-  if (!allowed.includes(member.role)) {
+  const permissionKey = routePermissions[location.pathname] || (
+    location.pathname.startsWith("/settings/") ? routePermissions["/settings"] : undefined
+  );
+  const hasPermission = !permissionKey || ["Master", "SuperAdmin", "Admin"].includes(member.role) || member.permissions[permissionKey];
+  if (!allowed.includes(member.role) || !hasPermission) {
     // ✅ Master gets sent back to /master, not /dashboard (which it can't access either)
     return <Navigate to={member.role === "Master" ? "/master" : "/dashboard"} replace />;
   }

@@ -23,6 +23,7 @@ const telecallerNav: NavItem[] = [
 ];
 const superAdminNav: NavItem[] = [
   ...telecallerNav.filter(item => item.to !== '/dialer' && item.to !== '/payment'),
+  { to: "/payment", label: "Payment", icon: CreditCard, perm: "payment" },
   { to: "/team", label: "Team & Members", icon: Users, perm: "team" },
   { to: "/marketing", label: "Marketing", icon: Megaphone, perm: "marketing" },
   { to: "/pbx", label: "Web PBX", icon: Lock, beta: true, perm: "pbx" },

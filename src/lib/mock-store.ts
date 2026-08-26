@@ -379,7 +379,7 @@ export const setBackendSession = (user: { id: string; name: string; email: strin
         companyId: user.companyId || exists.companyId,
         teams: Array.isArray(user.teams) ? user.teams : exists.teams,
         lists: Array.isArray(user.lists) ? user.lists : exists.lists,
-        permissions: user.permissions ? { ...exists.permissions, ...user.permissions } : exists.permissions,
+        permissions: user.permissions ? { ...defaultTelecallerPerms(), ...user.permissions } : exists.permissions,
         flags: user.flags ? { ...(exists.flags || defaultFlags()), ...user.flags } : exists.flags,
       }
     : {
@@ -393,7 +393,7 @@ export const setBackendSession = (user: { id: string; name: string; email: strin
         companyId: user.companyId,
         teams: Array.isArray(user.teams) ? user.teams : [],
         lists: Array.isArray(user.lists) ? user.lists : [],
-        permissions: defaultTelecallerPerms(),
+        permissions: { ...defaultTelecallerPerms(), ...(user.permissions || {}) },
         flags: user.flags ? { ...defaultFlags(), ...user.flags } : defaultFlags(),
       };
   state = { ...state, members: [member, ...state.members.filter(m => m.id !== user.id)], session: { memberId: user.id } };
