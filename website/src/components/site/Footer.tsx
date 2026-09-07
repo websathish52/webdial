@@ -10,9 +10,9 @@ const informationLinks = [
   ["Features", "/features"],
   ["FAQ", "/contact#faq"],
   ["Pricing", "/pricing"],
-  ["Privacy Policy", "/contact#privacy"],
-  ["Terms & Conditions", "/contact#terms"],
-  ["Cookie Policy", "/contact#cookies"],
+  ["Privacy Policy", "/privacy-policy"],
+  ["Terms & Conditions", "/terms"],
+  ["Cookie Policy", "/cookie-policy"],
 ] as const;
 
 const productLinks = [

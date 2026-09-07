@@ -7,6 +7,9 @@ import Integrations from "../website/src/routes/integrations";
 import Pricing from "../website/src/routes/pricing";
 import Resources from "../website/src/routes/resources";
 import Solutions from "../website/src/routes/solutions";
+import PrivacyPolicy from "../website/src/routes/privacy-policy";
+import TermsAndConditions from "../website/src/routes/terms";
+import CookiePolicy from "../website/src/routes/cookie-policy";
 
 export default function WebsiteApp() {
   return (
@@ -20,6 +23,9 @@ export default function WebsiteApp() {
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/resources" element={<Resources />} />
           <Route path="/solutions" element={<Solutions />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsAndConditions />} />
+          <Route path="/cookie-policy" element={<CookiePolicy />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
