@@ -49,7 +49,7 @@ function AuthPage() {
         if (res?.user) {
           // Token is valid, set session and redirect
           setBackendSession(res.user);
-          nav('/dashboard');
+          nav(res.user.role === 'master' ? '/master' : '/dashboard', { replace: true });
         } else {
           // Token is invalid, clear and show login
           clearAllAuthAndTenantStorage();
@@ -96,7 +96,9 @@ function AuthPage() {
 
         setBackendSession(res.user);
         toast.success(`Welcome ${res.user.name}`);
-        nav(res.user.role === 'master' ? '/master' : '/dashboard');
+        // Re-bootstrap the portal once after login so the master console is
+        // mounted from the correct route without a second guard redirect.
+        window.location.replace(res.user.role === 'master' ? '/master' : '/dashboard');
       })
       .catch((err: any) => {
         console.error(err);

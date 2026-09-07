@@ -162,6 +162,10 @@ export async function me() {
   return await request('/api/auth/me');
 }
 
+export async function completeOnboarding() {
+  return await request('/api/auth/onboarding-complete', { method: 'PUT' });
+}
+
 export async function changePassword(currentPassword: string, newPassword: string) {
   return await request('/api/auth/change-password', {
     method: 'PUT',
@@ -479,6 +483,8 @@ export async function createSuperAdmin(payload: {
   username?: string;
   phone?: string;
   password: string;
+  companyName: string;
+  billingPeriod?: 'monthly' | 'halfyearly' | 'annual';
   accessType?: 'MANUAL' | 'FREE_TRIAL' | 'FREE' | 'STARTED' | 'PRO';
   plan?: 'FREE' | 'STARTED' | 'PRO';
 }) {
@@ -590,7 +596,7 @@ export async function approvePayment(id: string) { return await request(`/api/pa
 export async function rejectPayment(id: string) { return await request(`/api/payments/${id}/reject`, { method: 'PUT' }); }
 
 export default {
-  login, me, changePassword, registerUser,
+  login, me, completeOnboarding, changePassword, registerUser,
   getLeads, createLead, importLeads, updateLead, deleteLead, getProducts, createProduct, deleteProduct,
   getAutomationRules, createAutomationRule, updateAutomationRule, deleteAutomationRule,
   getForm, saveForm, updateFormSettings, getWebForm, saveWebForm,

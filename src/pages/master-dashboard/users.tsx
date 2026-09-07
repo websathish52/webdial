@@ -66,18 +66,22 @@ const statusBadge = () => (
 
 const emptySuperAdminForm: {
   name: string;
+  companyName: string;
   email: string;
   username: string;
   phone: string;
   password: string;
+  billingPeriod: "monthly" | "halfyearly" | "annual";
   accessType: "MANUAL" | "FREE_TRIAL" | "FREE" | "STARTED" | "PRO";
   plan: "FREE" | "STARTED" | "PRO";
 } = {
   name: "",
+  companyName: "",
   email: "",
   username: "",
   phone: "",
   password: "",
+  billingPeriod: "monthly",
   accessType: "MANUAL",
   plan: "FREE",
 };
@@ -357,10 +361,12 @@ function UsersPage() {
     setEditTarget(row);
     setForm({
       name: row.name || "",
+      companyName: row.companyId?.companyName || "",
       email: row.email || "",
       username: row.username || "",
       phone: row.phone || "",
       password: "",
+      billingPeriod: "monthly",
       accessType: "MANUAL",
       plan: "FREE",
     });
@@ -368,8 +374,8 @@ function UsersPage() {
   };
 
   const handleCreateSuperAdmin = async () => {
-    if (!form.name || !form.email || !form.username || !form.password) {
-      setSuperAdminError("Please fill all required SuperAdmin fields.");
+    if (!form.name || !form.companyName || !form.email || !form.username || !form.password) {
+      setSuperAdminError("Please fill all required SuperAdmin and company fields.");
       return;
     }
 
@@ -378,10 +384,12 @@ function UsersPage() {
       setSuperAdminError("");
       await api.createSuperAdmin({
         name: form.name,
+        companyName: form.companyName,
         email: form.email,
         username: form.username,
         phone: form.phone,
         password: form.password,
+        billingPeriod: form.billingPeriod,
         accessType: form.accessType,
         plan: form.plan,
       });
@@ -723,6 +731,10 @@ function UsersPage() {
               <Label>SuperAdmin Name</Label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
+            <div className="col-span-2">
+              <Label>Company Name</Label>
+              <Input value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })} />
+            </div>
             <div>
               <Label>Email</Label>
               <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
@@ -738,6 +750,18 @@ function UsersPage() {
             <div>
               <Label>Password</Label>
               <PasswordInput value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+            </div>
+            <div>
+              <Label>Billing period</Label>
+              <select
+                className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                value={form.billingPeriod}
+                onChange={(e) => setForm({ ...form, billingPeriod: e.target.value as "monthly" | "halfyearly" | "annual" })}
+              >
+                <option value="monthly">Monthly</option>
+                <option value="halfyearly">Half-yearly (6 months)</option>
+                <option value="annual">Yearly (12 months)</option>
+              </select>
             </div>
             <div>
               <Label>Access type</Label>
@@ -772,7 +796,7 @@ function UsersPage() {
             </div>
           </div>
               <p className="text-xs text-muted-foreground px-1">
-            No company is created here. This SuperAdmin will create their own company from the Team &amp; Members page after logging in.
+              This company name will be shown in the SuperAdmin's All Team dropdown.
           </p>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCreateSuperAdminOpen(false)}>Cancel</Button>

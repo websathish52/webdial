@@ -35,47 +35,40 @@ type Step = {
   bullets: string[];
 };
 
-const steps: Step[] = [
-  {
-    label: "Welcome",
-    title: "Welcome to Web Dial",
-    description: "Your 7-day free trial is active. Let us get your calling workspace ready.",
-    icon: Sparkles,
-    bullets: ["Verify your account to activate up to 200 calls total in 7 days during trial", "Each telecaller is restricted to 30 calls a day during trial", "Your trial ends after 7 days"],
-  },
-  {
-    label: "Countries",
-    title: "Where are you calling?",
-    description: "Choose the countries your team will call from and call to.",
-    icon: MapPin,
-    bullets: ["Set your calling region", "Keep your team settings organized", "You can change this later in Settings"],
-  },
-  {
-    label: "Choose Setup",
-    title: "Choose your calling setup",
-    description: "Start with the option that best matches your team.",
-    icon: Settings2,
-    bullets: ["SIM-based calling for mobile teams", "Cloud calling for browser-based teams", "Connect a provider later from PBX Settings"],
-  },
-  {
-    label: "Add Contact",
-    title: "Add your first contact",
-    description: "Create a test contact or import your leads from Excel or CSV.",
-    icon: UserPlus,
-    bullets: ["Create lists in CRM", "Assign contacts to team members", "Import bulk contacts whenever you are ready"],
-  },
-  {
-    label: "First Call",
-    title: "Make your first call",
-    description: "Open the Dialer, select a contact, and start calling your team’s way.",
-    icon: PhoneCall,
-    bullets: ["Review the contact before calling", "Set a disposition after every call", "Track performance from Reports"],
-  },
-];
+const stepsByPlan: Record<string, Step[]> = {
+  TRIAL: [
+    { label: "Welcome", title: "Welcome to your Web Dial trial", description: "Your 7-day trial is active. Let us prepare your calling workspace.", icon: Sparkles, bullets: ["Up to 200 calls total during the trial", "Each telecaller can make up to 30 calls per day", "Your trial ends after 7 days"] },
+    { label: "Region", title: "Set your calling region", description: "Choose the countries your team will call from and call to.", icon: MapPin, bullets: ["Keep country and number settings organized", "Use the same region for your team", "You can change this later in Settings"] },
+    { label: "Setup", title: "Choose your calling setup", description: "Pick the calling method that fits your team.", icon: Settings2, bullets: ["Use SIM-based calling for mobile teams", "Use cloud calling for browser-based teams", "Connect a provider later from PBX Settings"] },
+    { label: "Contacts", title: "Add your first contacts", description: "Create a test contact or import leads from Excel or CSV.", icon: UserPlus, bullets: ["Create lists in CRM", "Assign contacts to team members", "Import bulk contacts whenever you are ready"] },
+    { label: "First Call", title: "Make your first call", description: "Open the Dialer and start your first calling workflow.", icon: PhoneCall, bullets: ["Review the contact before calling", "Set a disposition after every call", "Track performance from Reports"] },
+  ],
+  STARTED: [
+    { label: "Welcome", title: "Welcome to Started", description: "Your Started workspace is ready for everyday team calling.", icon: Sparkles, bullets: ["Organize contacts and lists in CRM", "Give your team a simple calling workflow", "Review activity and results from Reports"] },
+    { label: "Team", title: "Set up your team", description: "Create the people and access levels that will use this workspace.", icon: UserPlus, bullets: ["Add members from Team & Members", "Assign lists and responsibilities", "Keep each role focused on the right modules"] },
+    { label: "Calling", title: "Configure calling", description: "Choose your calling setup and prepare the Dialer.", icon: Settings2, bullets: ["Connect your telephony provider", "Set calling preferences in Settings", "Test the workflow with one contact"] },
+    { label: "CRM", title: "Bring in your contacts", description: "Build your first list and make it available to the team.", icon: MapPin, bullets: ["Create a list in CRM", "Import Excel or CSV contacts", "Assign contacts to the right team members"] },
+    { label: "Launch", title: "Start your team workflow", description: "Make the first call and track the result.", icon: PhoneCall, bullets: ["Open Auto Dialer", "Set a disposition after every call", "Use Reports to improve performance"] },
+  ],
+  PRO: [
+    { label: "Welcome", title: "Welcome to Pro", description: "Your Pro workspace is ready for advanced team operations.", icon: Sparkles, bullets: ["Use the complete CRM and calling workspace", "Connect WhatsApp, automation and marketing tools", "Track performance across your organization"] },
+    { label: "Team", title: "Build your operating team", description: "Set roles, permissions and ownership before you launch.", icon: UserPlus, bullets: ["Add members and assign roles", "Control module access and permissions", "Assign lists, teams and responsibilities"] },
+    { label: "Integrations", title: "Connect your channels", description: "Bring calling, WhatsApp and integrations into one workflow.", icon: Settings2, bullets: ["Configure PBX and calling settings", "Connect WhatsApp Business tools", "Review integrations before inviting the team"] },
+    { label: "Automation", title: "Automate your follow-up", description: "Use workflows, pipeline and marketing tools to reduce manual work.", icon: MapPin, bullets: ["Create automation rules", "Set up Pipeline stages and Tasks", "Prepare campaigns and Go Pages"] },
+    { label: "Launch", title: "Launch your first campaign", description: "Bring your team online and measure the first results.", icon: PhoneCall, bullets: ["Import and assign contacts", "Start calling or broadcasting", "Use Reports and Leaderboard to track outcomes"] },
+  ],
+};
+
+function getSteps(plan?: string) {
+  const requestedPlan = String(plan || "TRIAL").toUpperCase();
+  const normalizedPlan = requestedPlan === "FREE" || requestedPlan === "MANUAL" ? "STARTED" : requestedPlan;
+  return stepsByPlan[normalizedPlan] || stepsByPlan.TRIAL;
+}
 
 export default function TrialOnboardingDialog({ open, memberName, plan, onComplete }: TrialOnboardingDialogProps) {
   const [stepIndex, setStepIndex] = useState(0);
-  const step = steps[stepIndex];
+  const steps = getSteps(plan);
+  const step = steps[Math.min(stepIndex, steps.length - 1)];
   const StepIcon = step.icon;
   const isLastStep = stepIndex === steps.length - 1;
 

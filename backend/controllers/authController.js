@@ -73,6 +73,7 @@ exports.login = async (req, res) => {
       companyId: user.companyId || null,
       permissions: user.permissions,
       flags: user.flags,
+      onboardingCompleted: user.onboardingCompleted === true,
     },
   });
 };
@@ -80,8 +81,9 @@ exports.login = async (req, res) => {
 exports.startTrial = async (req, res) => {
   const { firstName, lastName, name, companyName, organisation, phone, email, password, plan, numberOfUsers, deviceIdentifier } = req.body;
   const normalizedEmail = String(email || '').trim().toLowerCase();
+  const normalizedName = String(name || `${firstName || ''} ${lastName || ''}`).trim().replace(/\s+/g, ' ');
   const selectedPlan = String(plan || '').toUpperCase();
-  if (!normalizedEmail || !password || !companyName || !deviceIdentifier || !['STARTED', 'PRO'].includes(selectedPlan)) {
+  if (!normalizedName || !normalizedEmail || !password || !String(companyName || '').trim() || !deviceIdentifier || !['STARTED', 'PRO'].includes(selectedPlan)) {
     return res.status(400).json({ message: 'Name, company, email, password, plan and device identifier are required' });
   }
 
@@ -93,7 +95,7 @@ exports.startTrial = async (req, res) => {
     const now = new Date();
     const expiryDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const company = await Company.create({ companyName: String(companyName).trim(), organisation: organisation || '', companyCode: `TRIAL-${Date.now()}` });
-    const user = await User.create({ name: name || `${firstName || ''} ${lastName || ''}`.trim(), email: normalizedEmail, password, phone: phone || '', role: 'superadmin', companyId: company._id });
+    const user = await User.create({ name: normalizedName, email: normalizedEmail, password, phone: phone || '', role: 'superadmin', companyId: company._id });
     company.createdBy = user._id;
     await company.save();
     const subscription = await Subscription.create({ companyId: company._id, plan: selectedPlan, type: 'FREE_TRIAL', status: 'ACTIVE', numberOfUsers: Math.max(1, Number(numberOfUsers) || 1), startDate: now, expiryDate, paymentStatus: 'SUCCESS' });
@@ -226,6 +228,16 @@ exports.me = async (req, res) => {
       companyId: req.user.companyId || null,
       permissions: req.user.permissions,
       flags: req.user.flags,
+      onboardingCompleted: req.user.onboardingCompleted === true,
     },
   });
+};
+
+exports.completeOnboarding = async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(req.user._id, { onboardingCompleted: true });
+    res.json({ onboardingCompleted: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };

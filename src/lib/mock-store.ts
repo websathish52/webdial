@@ -96,6 +96,7 @@ export type Member = {
   id: string; name: string; username: string; email: string; password: string;
   phone: string; role: "Master" | "SuperAdmin" | "Admin" | "Manager" | "Submanager" | "Telecaller";
   companyId?: string;
+  onboardingCompleted?: boolean;
   teams: string[]; lists: string[]; permissions: Permissions; flags?: MemberFlags;
 };
 export type CallLog = {
@@ -367,7 +368,7 @@ export const store = {
 };
 
 // allow setting session from backend auth during migration from mock data
-export const setBackendSession = (user: { id: string; name: string; email: string; role?: string; username?: string; teams?: string[]; lists?: string[]; companyId?: string; permissions?: Permissions; flags?: MemberFlags }) => {
+export const setBackendSession = (user: { id: string; name: string; email: string; role?: string; username?: string; teams?: string[]; lists?: string[]; companyId?: string; permissions?: Permissions; flags?: MemberFlags; onboardingCompleted?: boolean }) => {
   const exists = state.members.find(m => m.id === user.id);
   const member = exists
     ? {
@@ -377,6 +378,7 @@ export const setBackendSession = (user: { id: string; name: string; email: strin
         username: user.username || exists.username || user.email.split('@')[0],
         role: normalizeRole(user.role),
         companyId: user.companyId || exists.companyId,
+        onboardingCompleted: user.onboardingCompleted ?? exists.onboardingCompleted,
         teams: Array.isArray(user.teams) ? user.teams : exists.teams,
         lists: Array.isArray(user.lists) ? user.lists : exists.lists,
         permissions: user.permissions ? { ...defaultTelecallerPerms(), ...user.permissions } : exists.permissions,
@@ -391,6 +393,7 @@ export const setBackendSession = (user: { id: string; name: string; email: strin
         phone: '',
         role: normalizeRole(user.role),
         companyId: user.companyId,
+        onboardingCompleted: user.onboardingCompleted,
         teams: Array.isArray(user.teams) ? user.teams : [],
         lists: Array.isArray(user.lists) ? user.lists : [],
         permissions: { ...defaultTelecallerPerms(), ...(user.permissions || {}) },

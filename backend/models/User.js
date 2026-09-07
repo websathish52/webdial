@@ -57,6 +57,7 @@ const userSchema = new mongoose.Schema(
     // logo (CompanySettings.companyInfo.logoUrl) — each SuperAdmin (A, B, ...)
     // has their own, and it never mixes with any company's logo.
     logoUrl: { type: String, default: '' },
+    onboardingCompleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

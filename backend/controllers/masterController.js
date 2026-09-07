@@ -197,6 +197,7 @@ exports.getSuperAdmins = async (req, res) => {
   try {
     const superAdmins = await User.find({ role: 'superadmin' })
       .select('-password')
+      .populate('companyId', 'companyName companyCode status')
       .sort({ createdAt: -1 });
     res.json(superAdmins);
   } catch (err) {
@@ -204,15 +205,13 @@ exports.getSuperAdmins = async (req, res) => {
   }
 };
 
-// CREATE a SuperAdmin ONLY -- no company is created here.
-// The SuperAdmin logs in with no company assigned and creates their own
-// company later from their Team & Members page.
+// CREATE a SuperAdmin together with the company entered by the Master.
 exports.createSuperAdmin = async (req, res) => {
   try {
-    const { name, email, username, phone, password, accessType = 'MANUAL', plan = 'FREE' } = req.body;
+    const { name, email, username, phone, password, companyName, billingPeriod = 'monthly', accessType = 'MANUAL', plan = 'FREE' } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Name, email and password are required' });
+    if (!name || !email || !password || !String(companyName || '').trim()) {
+      return res.status(400).json({ message: 'Name, email, password and company name are required' });
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
@@ -228,6 +227,7 @@ exports.createSuperAdmin = async (req, res) => {
     const selectedAccess = String(accessType).toUpperCase();
     const selectedPlan = String(plan).toUpperCase();
     const normalizedPlan = ['FREE', 'STARTED', 'PRO'].includes(selectedPlan) ? selectedPlan : 'FREE';
+    const selectedBilling = ['monthly', 'halfyearly', 'annual'].includes(String(billingPeriod)) ? String(billingPeriod) : 'monthly';
     const superAdmin = await User.create({
       name,
       email: normalizedEmail,
@@ -240,18 +240,19 @@ exports.createSuperAdmin = async (req, res) => {
 
     if (['MANUAL', 'FREE', 'FREE_TRIAL', 'STARTED', 'PRO'].includes(selectedAccess)) {
       const company = await Company.create({
-        companyName: `${name}'s WebDial`,
+        companyName: String(companyName).trim(),
         companyCode: `MASTER-${Date.now()}`,
         createdBy: superAdmin._id,
       });
 
       const isFreeTrial = selectedAccess === 'FREE_TRIAL';
       const isManual = selectedAccess === 'MANUAL' || selectedAccess === 'FREE';
-      const selectedBilling = 'monthly';
       const startDate = new Date();
       const expiryDate = isManual
         ? null
-        : new Date(startDate.getTime() + (isFreeTrial ? 7 : 30) * 24 * 60 * 60 * 1000);
+        : isFreeTrial
+          ? new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000)
+          : new Date(startDate.getFullYear(), startDate.getMonth() + (durationMonths[selectedBilling] || 1), startDate.getDate());
 
       const resolvedPlan = selectedAccess === 'FREE' ? 'FREE' : selectedAccess === 'PRO' ? 'PRO' : selectedAccess === 'STARTED' ? 'STARTED' : normalizedPlan;
       const subscription = await Subscription.create({
@@ -263,8 +264,9 @@ exports.createSuperAdmin = async (req, res) => {
         billingPeriod: selectedBilling,
         startDate,
         expiryDate,
-        amount: isManual || isFreeTrial ? 0 : planPrices[resolvedPlan] || 0,
-        finalAmount: isManual || isFreeTrial ? 0 : planPrices[resolvedPlan] || 0,
+        amount: isManual || isFreeTrial ? 0 : (planPrices[resolvedPlan] || 0) * (durationMonths[selectedBilling] || 1),
+        discount: isManual || isFreeTrial ? 0 : (planPrices[resolvedPlan] || 0) * (durationMonths[selectedBilling] || 1) * (discountRates[selectedBilling] || 0),
+        finalAmount: isManual || isFreeTrial ? 0 : (planPrices[resolvedPlan] || 0) * (durationMonths[selectedBilling] || 1) * (1 - (discountRates[selectedBilling] || 0)),
         paymentStatus: isManual || isFreeTrial ? 'SUCCESS' : 'PENDING',
       });
 

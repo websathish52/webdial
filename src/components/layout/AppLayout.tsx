@@ -25,6 +25,7 @@ export default function AppLayout() {
   const [subscriptionExpired, setSubscriptionExpired] = useState(false);
   const [trialLimitReached, setTrialLimitReached] = useState(false);
   const [subscription, setSubscription] = useState<any>(null);
+  const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
   const [showTrialOnboarding, setShowTrialOnboarding] = useState(false);
   const [purchaseSnoozeVersion, setPurchaseSnoozeVersion] = useState(0);
   const navigationTimerRef = useRef<number | null>(null);
@@ -92,6 +93,7 @@ export default function AppLayout() {
     window.addEventListener("ifox-subscription-expired", handleExpired);
     window.addEventListener("ifox-trial-limit-reached", handleTrialLimit);
     if (member && member.role !== "Master") {
+      setSubscriptionLoaded(false);
       void api.getCurrentSubscription().then((value) => {
         setSubscription(value);
         const isPaid = String(value?.type || "").toUpperCase() === "PAID" && value?.status === "ACTIVE";
@@ -103,7 +105,9 @@ export default function AppLayout() {
         } else if ((isSuspended || isExpired) && !isPurchaseSnoozed()) {
           setSubscriptionExpired(true);
         }
-      }).catch(() => undefined);
+      }).catch(() => undefined).finally(() => setSubscriptionLoaded(true));
+    } else {
+      setSubscriptionLoaded(true);
     }
     return () => {
       window.removeEventListener("ifox-subscription-expired", handleExpired);
@@ -145,12 +149,12 @@ export default function AppLayout() {
     }
   }, [member, location.pathname, navigate, subscriptionExpired, trialLimitReached]);
   useEffect(() => {
-    if (!member || member.role === "Master") return;
-    const onboardingKey = `ifox_trial_onboarding_completed_${member.id}`;
-    if (localStorage.getItem("ifox_trial_onboarding_pending") === "true" && !localStorage.getItem(onboardingKey)) {
+    if (!member || member.role === "Master" || !subscriptionLoaded) return;
+    const onboardingKey = `ifox_onboarding_completed_${member.id}`;
+    if (member.onboardingCompleted !== true && !localStorage.getItem(onboardingKey)) {
       setShowTrialOnboarding(true);
     }
-  }, [member]);
+  }, [member, subscriptionLoaded]);
   useEffect(() => {
     const handleStorageFull = (event: Event) => {
       const detail = (event as CustomEvent<{ message?: string }>).detail;
@@ -275,10 +279,11 @@ export default function AppLayout() {
       <TrialOnboardingDialog
         open={showTrialOnboarding}
         memberName={member.name}
-        plan={subscription?.plan}
+        plan={String(subscription?.type || "").toUpperCase() === "FREE_TRIAL" ? "TRIAL" : subscription?.plan || "STARTED"}
         onComplete={() => {
           localStorage.removeItem("ifox_trial_onboarding_pending");
-          localStorage.setItem(`ifox_trial_onboarding_completed_${member.id}`, "true");
+          localStorage.setItem(`ifox_onboarding_completed_${member.id}`, "true");
+          void api.completeOnboarding().catch(() => undefined);
           setShowTrialOnboarding(false);
         }}
       />
