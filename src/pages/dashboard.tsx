@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useCurrentMember, DISPOSITIONS } from "@/lib/mock-store";
 import api from "@/lib/api";
+import { readSelection, writeSelection } from "@/lib/persistent-selection";
 import { useDispositionColors } from "@/lib/use-disposition-colors";
 import { PhoneCall, Users, CheckCircle2, Clock3, TrendingUp, Search, UserRound, TimerReset, BarChart3, CalendarDays } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
@@ -70,30 +71,39 @@ function Dashboard() {
   const [teamCalls, setTeamCalls] = useState<TeamCall[]>([]); // company-wide calls -> Team Activity table AND admin stat cards
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [lists, setLists] = useState<ListItem[]>([]);
-  const [companies, setCompanies] = useState<CompanyRecord[]>([]);
+  const [companies] = useState<CompanyRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMemberId, setSelectedMemberId] = useState("all");
+  const [selectedMemberId, setSelectedMemberId] = useState(() => readSelection(member, "dashboard-member") || "all");
   const [searchTerm, setSearchTerm] = useState("");
+  useEffect(() => {
+    writeSelection(member, "dashboard-member", selectedMemberId);
+  }, [member, selectedMemberId]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [statsRes, leadsRes, callsRes, teamCallsRes, membersRes, listsRes, companiesRes] = await Promise.all([
-          api.getDashboardStats(), // This is kept for now but its direct usage will be replaced
-          api.getLeads({ limit: 50000 }),
-          api.getCallLogs({ limit: 1000 }), // personal (scoped to logged-in agent unless admin)
-          api.getCallLogs({ limit: 50000, scope: 'team' }), // all company calls for SuperAdmin All Team analytics
-          api.getMembers(),
-          api.getLists(),
-          api.getCompanies(),
-        ]);
-        setLeads(leadsRes?.leads || []);
-        setCalls((callsRes?.calls || []) as TeamCall[]);
-        setTeamCalls((teamCallsRes?.calls || []) as TeamCall[]);
-        setMembers((membersRes || []) as TeamMember[]);
-        setLists(Array.isArray(listsRes) ? listsRes : (listsRes?.lists || []));
-        setCompanies(Array.isArray(companiesRes) ? companiesRes : []);
+        const membersPromise = api.getMembers().then((membersRes) => {
+          setMembers((membersRes || []) as TeamMember[]);
+        });
+        const listsPromise = api.getLists().then((listsRes) => {
+          setLists(Array.isArray(listsRes) ? listsRes : (listsRes?.lists || []));
+        });
+        const leadsPromise = api.getLeads({ limit: 50000 }).then((leadsRes) => {
+          setLeads(leadsRes?.leads || []);
+        });
+        const callsPromise = api.getCallLogs({ limit: 1000 }).then((callsRes) => {
+          setCalls((callsRes?.calls || []) as TeamCall[]);
+        });
+        const teamCallsPromise = api.getCallLogs({ limit: 50000, scope: 'team' }).then((teamCallsRes) => {
+          setTeamCalls((teamCallsRes?.calls || []) as TeamCall[]);
+        });
+
+        // Render the dashboard as soon as the small reference datasets are ready;
+        // large leads and call-log responses continue filling the cards and charts.
+        await Promise.allSettled([membersPromise, listsPromise]);
+        setLoading(false);
+        await Promise.allSettled([leadsPromise, callsPromise, teamCallsPromise]);
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
       } finally {
@@ -192,9 +202,15 @@ function Dashboard() {
         lists: member.lists,
       }, ...fetchedTeamMembers];
 
-  const teamActivity = teamMembers
+  // Team Activity and Present / Agents are company-wide dashboard metrics for
+  // every role, including Telecaller. The team-scoped API already applies the
+  // tenant filter and includes the company owner/SuperAdmin where applicable.
+  const activityCalls = teamCalls;
+  const visibleTeamMembers = teamMembers;
+
+  const teamActivity = visibleTeamMembers
     .map((user) => {
-      const userCalls = teamCalls.filter((c) => {
+      const userCalls = activityCalls.filter((c) => {
         const agent = c.agent;
         const agentId = typeof agent === 'object' && agent !== null ? (agent._id || agent.id) : agent;
         const userId = user._id || user.id;
@@ -282,9 +298,9 @@ function Dashboard() {
   ))}
 </div>
       <div className="grid min-w-0 lg:grid-cols-2 gap-4">
-        <div className="bg-card rounded-xl border p-4 sm:p-6 shadow min-w-0 overflow-hidden">
+        <div className="bg-card rounded-xl border p-4 sm:p-6 shadow min-w-0 overflow-hidden min-[1025px]:h-[330px]">
           <h3 className="font-semibold mb-2">Dispositions</h3>
-          <div className="h-[360px] w-full min-w-0 sm:h-[390px]">
+          <div className="h-[360px] w-full min-w-0 sm:h-[390px] min-[1025px]:h-[260px]">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie data={myDispositionsToday} dataKey="value" cx="50%" cy="40%" outerRadius={105} innerRadius={52}>
@@ -296,9 +312,9 @@ function Dashboard() {
           </ResponsiveContainer>
           </div>
         </div>
-        <div className="bg-card rounded-xl border p-4 sm:p-6 shadow min-w-0 overflow-hidden">
+        <div className="bg-card rounded-xl border p-4 sm:p-6 shadow min-w-0 overflow-hidden min-[1025px]:h-[330px]">
           <h3 className="font-semibold mb-2 ">Daily Calls (Last 7 Days Performance)</h3>
-          <div className="h-[280px] w-full min-w-0 mt-10">
+          <div className="h-[280px] w-full min-w-0 mt-10 min-[1025px]:mt-4 min-[1025px]:h-[230px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={dailyCallsData} barCategoryGap="18%" barGap={3}>
               <XAxis dataKey="day" tick={{ fontSize: 12 }} />

@@ -1,0 +1,10 @@
+const express = require('express');
+const router = express.Router();
+const controller = require('../controllers/productController');
+const { protect } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permission');
+router.use(protect, requirePermission('tools'));
+router.get('/', controller.list);
+router.post('/', controller.create);
+router.delete('/:id', controller.remove);
+module.exports = router;

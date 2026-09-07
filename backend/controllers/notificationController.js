@@ -4,6 +4,53 @@ const User = require('../models/User');
 const Company = require('../models/Company');
 const { resolveCompanyId } = require('../middleware/tenant');
 
+exports.createNotification = async ({ companyId, recipientId, actorId, type, title, message, relatedTaskId, relatedTicketId, metadata = {} }) => {
+  if (!recipientId) return null;
+  const notification = await Notification.create({
+    companyId: companyId || null,
+    recipientId,
+    actorId: actorId || null,
+    type,
+    title,
+    message,
+    relatedTaskId: relatedTaskId || null,
+    relatedTicketId: relatedTicketId || null,
+    metadata: metadata || {},
+  });
+  return notification;
+};
+
+exports.createPaymentNotification = async ({ companyId, recipientId, actorId, payment, customerName, companyName, status }) => {
+  const normalizedStatus = String(status || 'pending').toLowerCase();
+  const titleMap = {
+    pending: 'Payment submitted for approval',
+    approved: 'Payment approved',
+    rejected: 'Payment rejected',
+  };
+  const messageMap = {
+    pending: `${customerName || 'Customer'} submitted a ${payment?.plan || 'subscription'} payment request for approval.`,
+    approved: `${customerName || 'Customer'} payment was approved and the plan is active.`,
+    rejected: `${customerName || 'Customer'} payment was rejected. Please review the failed payment details.`,
+  };
+
+  return exports.createNotification({
+    companyId,
+    recipientId,
+    actorId,
+    type: normalizedStatus === 'approved' ? 'payment_approved' : normalizedStatus === 'rejected' ? 'payment_rejected' : 'payment_pending_approval',
+    title: titleMap[normalizedStatus] || 'Payment update',
+    message: messageMap[normalizedStatus] || 'Payment updated.',
+    metadata: {
+      companyName: companyName || 'Company',
+      customerName: customerName || 'Customer',
+      plan: payment?.plan || 'Subscription',
+      amount: Number(payment?.finalAmount ?? payment?.amount ?? 0),
+      paymentId: String(payment?._id || ''),
+      status: normalizedStatus,
+    },
+  });
+};
+
 exports.listNotifications = async (req, res) => {
   try {
     const companyId = resolveCompanyId(req);

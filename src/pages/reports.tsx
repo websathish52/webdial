@@ -8,6 +8,7 @@ import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Resp
 import { Download, Filter, BarChart3, Table as TableIcon, Calendar, ChevronRight, ChevronLeft } from "lucide-react";
 import * as XLSX from "xlsx";
 import api from "@/lib/api";
+import { readSelection, writeSelection } from "@/lib/persistent-selection";
 import { toast } from "sonner";
 import { useDispositionColors } from "@/lib/use-disposition-colors";
 
@@ -15,6 +16,13 @@ type CallRecord = { id: string; leadId?: string; leadList?: string; name: string
 type LeadRecord = { id: string; list: string; };
 type MemberRecord = { id: string; name: string; };
 type ListRecord = { name: string; };
+
+const toDateInputValue = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 const normalizeCall = (call: any): CallRecord => ({
   id: call?._id || call?.id || `${call?.phone || "call"}-${Date.now()}`,
@@ -53,7 +61,7 @@ function ReportsPage() {
       try {
         setLoading(true);
         const [callsRes, leadsRes, membersRes, listsRes] = await Promise.all([
-          api.getCallLogs({ limit: 10000 }),
+          api.getCallLogs({ limit: 10000, scope: "team" }),
           api.getLeads({ limit: 50000 }),
           api.getMembers(),
           api.getLists(),
@@ -74,32 +82,50 @@ function ReportsPage() {
     return () => window.removeEventListener('ifox-crm-updated', handleCrmUpdated);
   }, []);
 
-  const [list, setList] = useState("all");
-  const [member, setMember] = useState<string>(me?.name ?? "all");
+  const [list, setList] = useState(() => readSelection(me, "reports-list") || "all");
+  const [member, setMember] = useState<string>(() => readSelection(me, "reports-member") || "all");
   const [dispo, setDispo] = useState<string>("all");
   const [modern, setModern] = useState(true);
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(5);
+  const defaultEndDate = toDateInputValue(new Date());
+  const defaultStartDate = toDateInputValue(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000));
+  const [startDate, setStartDate] = useState(defaultStartDate);
+  const [endDate, setEndDate] = useState(defaultEndDate);
 
-  const from = new Date(); from.setDate(from.getDate() - 6);
+  useEffect(() => {
+    writeSelection(me, "reports-list", list);
+    writeSelection(me, "reports-member", member);
+  }, [me, list, member]);
+
+  const from = new Date(`${startDate}T00:00:00`);
+  const until = new Date(`${endDate}T23:59:59.999`);
   const filtered = calls.filter(c =>
     (list === "all" || c.leadList === list || leads.find(l => l.id === c.leadId)?.list === list) &&
     (member === "all" || c.agent === member) &&
     (dispo === "all" || c.disposition === dispo) &&
-    new Date(c.calledAt) >= from
+    from <= until && new Date(c.calledAt) >= from && new Date(c.calledAt) <= until
   );
   const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
   const pagedCalls = filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage);
 
   useEffect(() => {
     setPage(1);
-  }, [list, member, dispo, rowsPerPage]);
+  }, [list, member, dispo, rowsPerPage, startDate, endDate]);
 
-  const dailyLabels = Array.from({length:7},(_,i)=>{const d=new Date(); d.setDate(d.getDate()-(6-i)); return d.toISOString().slice(5,10);});
+  const dailyLabels: string[] = [];
+  if (startDate <= endDate) {
+    const chartDate = new Date(`${startDate}T00:00:00`);
+    const chartEndDate = new Date(`${endDate}T00:00:00`);
+    while (chartDate <= chartEndDate) {
+      dailyLabels.push(toDateInputValue(chartDate));
+      chartDate.setDate(chartDate.getDate() + 1);
+    }
+  }
   const daily = dailyLabels.map(label => ({
-    day: label,
-    calls: filtered.filter(c => c.calledAt.slice(5,10) === label).length,
-    talkTime: filtered.filter(c => c.calledAt.slice(5,10) === label).reduce((s,c)=>s+c.duration,0),
+    day: label.slice(5),
+    calls: filtered.filter(c => toDateInputValue(new Date(c.calledAt)) === label).length,
+    talkTime: filtered.filter(c => toDateInputValue(new Date(c.calledAt)) === label).reduce((s,c)=>s+c.duration,0),
   }));
   const agentData = members.map(m => ({ name: m.name.split(" ")[0], calls: filtered.filter(c=>c.agent===m.name).length }));
   const dispoData = DISPOSITIONS.filter(d => d.key !== "dnd").map(d => ({ name: d.label, value: filtered.filter(c => c.disposition === d.key).length, color: d.color })).filter(d => d.value > 0);
@@ -113,7 +139,7 @@ function ReportsPage() {
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Reports");
-    XLSX.writeFile(wb, "reports.xlsx");
+    XLSX.writeFile(wb, `reports-${startDate}-to-${endDate}.xlsx`);
   };
 
   if (loading) return <div className="p-6">Loading reports...</div>;
@@ -175,7 +201,9 @@ function ReportsPage() {
       {/* Filters */}
       <div className="bg-card rounded-xl border p-4 space-y-3">
         <div className="text-xs font-bold uppercase text-muted-foreground">Filters</div>
-        <div className="grid sm:grid-cols-4 gap-3">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-6 gap-3">
+          <div><div className="text-xs mb-1">Start date</div><Input type="date" value={startDate} max={endDate} onChange={(event) => setStartDate(event.target.value)} /></div>
+          <div><div className="text-xs mb-1">End date</div><Input type="date" value={endDate} min={startDate} onChange={(event) => setEndDate(event.target.value)} /></div>
           <div><div className="text-xs mb-1">List</div>
             <Select value={list} onValueChange={setList}><SelectTrigger><SelectValue/></SelectTrigger>
               <SelectContent><SelectItem value="all">All Lists</SelectItem>{lists.map(l => <SelectItem key={l.name} value={l.name}>{l.name}</SelectItem>)}</SelectContent>
@@ -252,7 +280,7 @@ function ReportsPage() {
           <Input placeholder="Search name, phone or disposition" className="max-w-md bg-background"/>
           <div className="ml-auto flex gap-2">
             <Button variant="outline" size="sm">Columns</Button>
-            <Button variant="outline" size="sm" className="gap-1" onClick={exportCsv} disabled={me?.flags?.disableExportList}><Download className="size-3.5"/> Export</Button>
+            <Button variant="outline" size="sm" className="gap-1 border-blue-600 text-blue-700 hover:bg-blue-50" onClick={exportCsv} disabled={me?.flags?.disableExportList}><Download className="size-3.5"/> Export</Button>
           </div>
         </div>
         <div className="overflow-x-auto">

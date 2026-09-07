@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Kanban, Plus, Search, Bot, X, GripVertical, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import api, { getSelectedCompanyId } from "@/lib/api";
+import { readSelection, writeSelection } from "@/lib/persistent-selection";
 import { useDispositionColors } from "@/lib/use-disposition-colors";
 
 type Stage = { _id?: string; id?: string; name: string; color?: string; createdBy?: string };
@@ -26,13 +27,17 @@ function PipelinePage() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [lists, setLists] = useState<string[]>([]);
-  const [selectedList, setSelectedList] = useState("all");
+  const [selectedList, setSelectedList] = useState(() => readSelection(me, "pipeline-list") || "all");
   const [selectedDisposition, setSelectedDisposition] = useState("all");
   const [search, setSearch] = useState("");
   const [addStageOpen, setAddStageOpen] = useState(false);
   const [stageName, setStageName] = useState("");
   const [stageColor, setStageColor] = useState("#6b7280");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    writeSelection(me, "pipeline-list", selectedList);
+  }, [me, selectedList]);
 
   const loadData = async () => {
     try {
@@ -307,7 +312,7 @@ function PipelinePage() {
                     </div>
                   );
                 })}
-                {stageDeals.length === 0 && (
+                {combinedDeals.length === 0 && (
                   <div className="text-center py-8 text-xs text-muted-foreground border-2 border-dashed rounded-lg m-1">
                     <div className="text-2xl mb-2">═</div>
                     No Contacts Here Yet<br />Drop contacts here

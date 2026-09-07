@@ -17,7 +17,7 @@ export const DISPOSITIONS: { key: Disposition; label: string; color: string; tex
   { key: "interested", label: "Interested", color: "#eab308", text: "#ffffff" },
   { key: "not_interested", label: "Not Interested", color: "#6b7280", text: "#ffffff" },
   { key: "callback", label: "Callback", color: "#f59e0b", text: "#ffffff" },
-  { key: "converted", label: "Converted", color: "#059669", text: "#ffffff" },
+  { key: "converted", label: "Converted", color: "#2563eb", text: "#ffffff" },
   { key: "no_answer", label: "Ringing / No Response", color: "#ef4444", text: "#ffffff" },
   { key: "busy", label: "Busy", color: "#92400e", text: "#ffffff" },
   { key: "wrong_number", label: "Wrong Number", color: "#111827", text: "#ffffff" },

@@ -31,6 +31,8 @@ const Company = require('../models/Company');
 const Integration = require('../models/Integration');
 const PbxSettings = require('../models/PbxSettings');
 const Payment = require('../models/Payment');
+const Subscription = require('../models/Subscription');
+const Trial = require('../models/Trial');
 
 const fs = require('fs');
 
@@ -79,6 +81,8 @@ async function cascadeDeleteCompanyData(companyId, opts = {}) {
   results.integrations = await Integration.deleteMany({ companyId }).catch(() => ({ deletedCount: 0 }));
   results.pbxSettings = await PbxSettings.deleteMany({ companyId }).catch(() => ({ deletedCount: 0 }));
   results.payments = await Payment.deleteMany({ companyId }).catch(() => ({ deletedCount: 0 }));
+  results.subscriptions = await Subscription.deleteMany({ companyId }).catch(() => ({ deletedCount: 0 }));
+  results.trials = await Trial.deleteMany({ companyId }).catch(() => ({ deletedCount: 0 }));
 
   if (deleteUsers) {
     // Delete all non-superadmin members belonging to this company

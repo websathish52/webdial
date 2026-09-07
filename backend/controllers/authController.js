@@ -2,6 +2,12 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const logAudit = require('../utils/auditLogger');
 const { resolveCompanyId } = require('../middleware/tenant');
+const Company = require('../models/Company');
+const Subscription = require('../models/Subscription');
+const Trial = require('../models/Trial');
+const CompanySettings = require('../models/CompanySettings');
+const { sendSubscriptionEmail } = require('../utils/subscriptionMailer');
+const notificationController = require('./notificationController');
 
 function normalizeRole(role) {
   const value = String(role || 'telecaller').toLowerCase();
@@ -25,6 +31,21 @@ async function verifyPassword(user, password) {
   if (!user || !password) return false;
   if (typeof user.matchPassword === 'function') return user.matchPassword(password);
   return user.password === password;
+}
+
+async function resolveCompanySeatInfo(companyId) {
+  if (!companyId) return { subscription: null, currentUsers: 0, seatLimit: 0 };
+
+  const [subscription, currentUsers] = await Promise.all([
+    Subscription.findOne({ companyId }).sort({ createdAt: -1 }).lean(),
+    User.countDocuments({ companyId }),
+  ]);
+
+  const baseSeatLimit = subscription ? Number(subscription.numberOfUsers || 0) : 0;
+  const normalizedPlan = String(subscription?.plan || '').toUpperCase();
+  const seatLimit = normalizedPlan === 'STARTED' ? Math.min(5, Math.max(1, baseSeatLimit || 5)) : Math.max(0, baseSeatLimit);
+
+  return { subscription, currentUsers, seatLimit };
 }
 
 exports.login = async (req, res) => {
@@ -54,6 +75,52 @@ exports.login = async (req, res) => {
       flags: user.flags,
     },
   });
+};
+
+exports.startTrial = async (req, res) => {
+  const { firstName, lastName, name, companyName, organisation, phone, email, password, plan, numberOfUsers, deviceIdentifier } = req.body;
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const selectedPlan = String(plan || '').toUpperCase();
+  if (!normalizedEmail || !password || !companyName || !deviceIdentifier || !['STARTED', 'PRO'].includes(selectedPlan)) {
+    return res.status(400).json({ message: 'Name, company, email, password, plan and device identifier are required' });
+  }
+
+  try {
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    const usedTrial = await Trial.findOne({ $or: [{ deviceIdentifier: String(deviceIdentifier).trim() }, { email: normalizedEmail }, ...(phone ? [{ phone: String(phone).trim() }] : [])] });
+    if (existingUser || usedTrial) return res.status(409).json({ code: 'TRIAL_ALREADY_USED', message: 'This email, phone number, or device has already used its free trial. Please purchase a subscription.' });
+
+    const now = new Date();
+    const expiryDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const company = await Company.create({ companyName: String(companyName).trim(), organisation: organisation || '', companyCode: `TRIAL-${Date.now()}` });
+    const user = await User.create({ name: name || `${firstName || ''} ${lastName || ''}`.trim(), email: normalizedEmail, password, phone: phone || '', role: 'superadmin', companyId: company._id });
+    company.createdBy = user._id;
+    await company.save();
+    const subscription = await Subscription.create({ companyId: company._id, plan: selectedPlan, type: 'FREE_TRIAL', status: 'ACTIVE', numberOfUsers: Math.max(1, Number(numberOfUsers) || 1), startDate: now, expiryDate, paymentStatus: 'SUCCESS' });
+    company.subscriptionId = subscription._id;
+    await company.save();
+    await Trial.create({ companyId: company._id, email: normalizedEmail, phone: phone || '', deviceIdentifier: String(deviceIdentifier).trim(), plan: selectedPlan, startDate: now, expiryDate });
+    await CompanySettings.create({ companyId: company._id, paymentProfile: { company: String(companyName).trim(), firstName: firstName || user.name.split(/\s+/)[0] || '', lastName: lastName || user.name.split(/\s+/).slice(1).join(' '), email: normalizedEmail, phone: phone || '', country: 'India' } });
+    const details = { Customer: user.name, Plan: selectedPlan, 'Trial start': now.toISOString(), 'Trial expiry': expiryDate.toISOString(), Users: Math.max(1, Number(numberOfUsers) || 1), 'Login link': `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth` };
+    const adminEmail = process.env.ADMIN_EMAIL || 'sathish@webcodexus.com';
+    const masterUsers = await User.find({ role: 'master' }).select('_id').lean();
+    await Promise.allSettled([
+      sendSubscriptionEmail({ to: normalizedEmail, subject: 'WebDial 7-Day Free Trial Activated', title: 'Your WebDial free trial is active', details }),
+      sendSubscriptionEmail({ to: adminEmail, subject: 'New WebDial Free Trial Activated', title: 'New WebDial free trial', details: { ...details, Email: normalizedEmail, 'Account ID': company._id.toString() } }),
+      ...masterUsers.map((masterUser) => notificationController.createNotification({
+        companyId: company._id,
+        recipientId: masterUser._id,
+        actorId: user._id,
+        type: 'free_trial_started',
+        title: 'Free trial started',
+        message: `${user.name} started a free trial for ${selectedPlan}.`,
+        metadata: { companyName: companyName || 'Company', customerName: user.name, plan: selectedPlan, expiryDate: expiryDate.toISOString() },
+      })),
+    ]);
+    res.status(201).json({ token: generateToken(user), user: { id: user._id, email: user.email, role: user.role, name: user.name, companyId: user.companyId }, trial: { plan: selectedPlan, startDate: now, expiryDate } });
+  } catch (err) {
+    res.status(err.code === 11000 ? 409 : 500).json({ message: err.code === 11000 ? 'Account already exists' : err.message });
+  }
 };
 
 // register (protected - only superadmin can create other users)
@@ -88,6 +155,24 @@ exports.register = async (req, res) => {
   try {
     const existing = await User.findOne({ $or: [{ email: normalizedEmail }, ...(normalizedUsername ? [{ username: normalizedUsername }] : [])] });
     if (existing) return res.status(409).json({ message: 'User already exists' });
+
+    if (assignedCompanyId) {
+      const { subscription, currentUsers, seatLimit } = await resolveCompanySeatInfo(assignedCompanyId);
+      if (subscription && subscription.status !== 'ACTIVE') {
+        return res.status(402).json({ code: 'SUBSCRIPTION_INACTIVE', message: 'Company subscription is inactive. Please upgrade to continue.' });
+      }
+      if (subscription && subscription.expiryDate && new Date(subscription.expiryDate) <= new Date()) {
+        return res.status(402).json({ code: 'SUBSCRIPTION_EXPIRED', message: 'Company subscription has expired. Please purchase a plan.' });
+      }
+      if (seatLimit > 0 && currentUsers + 1 > seatLimit) {
+        return res.status(402).json({
+          code: 'SEAT_LIMIT_REACHED',
+          message: subscription?.plan === 'STARTED'
+            ? 'Starter plan seats are full. Upgrade to add another member.'
+            : 'No paid seat is available for this company. Purchase more seats to add a member.',
+        });
+      }
+    }
 
     const user = new User({
       name,

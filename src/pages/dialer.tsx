@@ -4,6 +4,7 @@ function useAppSearch(): any { const [sp] = useSearchParams(); return Object.fro
 import { useState, useEffect, useRef } from "react";
 import { useCurrentMember, DISPOSITIONS, dispoMeta, type Disposition } from "@/lib/mock-store";
 import api from "@/lib/api";
+import { readSelection, writeSelection } from "@/lib/persistent-selection";
 import { useDispositionColors } from "@/lib/use-disposition-colors";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -64,7 +65,11 @@ function DialerPage() {
           return assignedToMatch || member?.lists?.includes(l.name);
         })
         .map((l: ListItem) => l.name);
-  const [selectedList, setSelectedList] = useState(listParam || availableLists[0] || "");
+  const [selectedList, setSelectedList] = useState(() => listParam || readSelection(member, "dialer-list") || availableLists[0] || "");
+
+  useEffect(() => {
+    writeSelection(member, "dialer-list", selectedList);
+  }, [member, selectedList]);
 
   const [idx, setIdx] = useState(0);
   const [running, setRunning] = useState(false);
@@ -161,13 +166,13 @@ function DialerPage() {
   useEffect(() => {
     if (!inCall) return;
     const onFocus = () => {
-      setTimeout(() => { if (inCall) endCallCapture(); }, 300);
+      setTimeout(() => { if (inCall && !dispoOpen) endCallCapture(); }, 300);
     };
-    const onVis = () => { if (document.visibilityState === "visible" && inCall) onFocus(); };
+    const onVis = () => { if (document.visibilityState === "visible" && inCall && !dispoOpen) onFocus(); };
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVis);
     return () => { window.removeEventListener("focus", onFocus); document.removeEventListener("visibilitychange", onVis); };
-  }, [inCall]);
+  }, [inCall, dispoOpen]);
 
   if (!member) return null;
 
@@ -267,7 +272,12 @@ function DialerPage() {
       }
     }
     if (gapRef.current) { window.clearInterval(gapRef.current); gapRef.current = null; }
-    setInCall(true); setTimer(0); setNotes(""); setRecordingUrl(undefined);
+    setInCall(true);
+    setDispoOpen(false);
+    setTimer(0);
+    setPendingDuration(0);
+    setNotes("");
+    setRecordingUrl(undefined);
     void startRecording();
     window.location.href = `tel:${current.phone}`;
   };
@@ -278,24 +288,34 @@ function DialerPage() {
     startCall();
   }, [autoAdvance, gapCountdown, running, inCall, current]);
 
+  const stopCallTimer = () => {
+    if (timerRef.current) {
+      window.clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
   const endCallCapture = async () => {
-    if (timerRef.current) window.clearInterval(timerRef.current);
+    if (dispoOpen) return;
     const savedRecordingUrl = await stopRecording();
-    setInCall(false);
-    setPendingDuration(timer);
     setRecordingUrl(savedRecordingUrl);
+    setPendingDuration(timer);
     setDispoOpen(true);
   };
 
   const logAndAdvance = async (dispo: Disposition) => {
     if (!current) return;
     try {
+      const finalDuration = Math.max(0, timer);
+      setPendingDuration(finalDuration);
+      stopCallTimer();
+      setInCall(false);
       await api.logCall({
         leadId: current._id || current.id || "",
         phone: current.phone,
         name: current.name,
         agent: member.name,
-        duration: pendingDuration,
+        duration: finalDuration,
         disposition: dispo,
         notes,
         recordingUrl,
@@ -328,8 +348,13 @@ function DialerPage() {
 
   const skip = () => setIdx((i) => Math.min(i + 1, Math.max(0, queue.length - 1)));
   const stop = () => {
-    setRunning(false); setInCall(false); void stopRecording();
-    if (timerRef.current) window.clearInterval(timerRef.current);
+    setRunning(false);
+    setDispoOpen(false);
+    setInCall(false);
+    setPendingDuration(0);
+    setTimer(0);
+    stopCallTimer();
+    void stopRecording();
     if (gapRef.current) window.clearInterval(gapRef.current);
     setGapCountdown(0);
     setAutoAdvance(false);
@@ -478,7 +503,7 @@ function DialerPage() {
             <DialogTitle>Call ended — {current?.name}</DialogTitle>
           </DialogHeader>
           <div className="text-sm text-muted-foreground -mt-2">
-            Duration: <span className="font-mono font-semibold">{fmt(pendingDuration)}</span>
+            Duration: <span className="font-mono font-semibold">{fmt(timer)}</span>
             {recordingUrl && <span className="ml-2 text-primary">· Recording saved</span>}
           </div>
           <div className="flex flex-wrap items-center gap-3">

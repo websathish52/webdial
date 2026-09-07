@@ -1,5 +1,6 @@
 const Company = require('../models/Company');
 const User = require('../models/User');
+const Subscription = require('../models/Subscription');
 const logAudit = require('../utils/auditLogger');
 const { cascadeDeleteCompanyData } = require('../utils/Cascadedeletecompany');
 
@@ -39,8 +40,47 @@ exports.createCompany = async (req, res) => {
     const existing = await Company.findOne({ $or: [{ companyName }, { companyCode }] });
     if (existing) return res.status(409).json({ message: 'Company name or code already exists' });
 
+    if (role === 'superadmin') {
+      const primaryCompany = req.user.companyId ? await Company.findById(req.user.companyId).select('_id subscriptionId') : null;
+      const sourceSubscription = primaryCompany?.subscriptionId
+        ? await Subscription.findById(primaryCompany.subscriptionId).select('type status expiryDate plan numberOfUsers billingPeriod startDate amount discount finalAmount paymentStatus').lean()
+        : null;
+
+      if (sourceSubscription?.type === 'FREE_TRIAL' && sourceSubscription.status === 'ACTIVE' && sourceSubscription.expiryDate && new Date(sourceSubscription.expiryDate) > new Date()) {
+        const branchCount = await Company.countDocuments({ createdBy: req.user._id });
+        if (branchCount >= 2) return res.status(403).json({ code: 'TRIAL_BRANCH_LIMIT_REACHED', message: 'Your 7-day trial allows up to 2 companies or branches.' });
+      }
+    }
+
     const company = new Company({ companyName, companyCode, status, createdBy: req.user._id });
     await company.save();
+
+    if (role === 'superadmin') {
+      const primaryCompany = req.user.companyId ? await Company.findById(req.user.companyId).select('_id subscriptionId') : null;
+      const sourceSubscription = primaryCompany?.subscriptionId
+        ? await Subscription.findById(primaryCompany.subscriptionId).select('type status expiryDate plan numberOfUsers billingPeriod startDate amount discount finalAmount paymentStatus').lean()
+        : null;
+
+      if (sourceSubscription && sourceSubscription.status === 'ACTIVE') {
+        const inheritedSubscription = await Subscription.create({
+          companyId: company._id,
+          plan: sourceSubscription.plan || 'STARTED',
+          type: sourceSubscription.type || 'PAID',
+          status: sourceSubscription.status || 'ACTIVE',
+          numberOfUsers: Math.max(1, Number(sourceSubscription.numberOfUsers) || 1),
+          billingPeriod: sourceSubscription.billingPeriod || 'monthly',
+          startDate: sourceSubscription.startDate || new Date(),
+          expiryDate: sourceSubscription.expiryDate || null,
+          amount: Number(sourceSubscription.amount || sourceSubscription.finalAmount || 0),
+          discount: Number(sourceSubscription.discount || 0),
+          finalAmount: Number(sourceSubscription.finalAmount || sourceSubscription.amount || 0),
+          paymentStatus: sourceSubscription.paymentStatus || 'SUCCESS',
+        });
+
+        company.subscriptionId = inheritedSubscription._id;
+        await company.save();
+      }
+    }
 
     // If a SuperAdmin creates their first company and has no companyId yet,
     // link them to it automatically.
@@ -127,6 +167,9 @@ exports.deleteCompany = async (req, res) => {
     const companyName = company.companyName;
 
     await cascadeDeleteCompanyData(companyId, { deleteCompanyDoc: true, deleteUsers: true });
+    if (role === 'master') {
+      await User.deleteMany({ companyId });
+    }
 
     // If the SuperAdmin's own companyId pointed at the deleted company,
     // clear it so they fall back to "no company" state.

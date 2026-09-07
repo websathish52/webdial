@@ -1,8 +1,10 @@
 const PipelineStage = require('../models/PipelineStage');
 const PipelineDeal = require('../models/PipelineDeal');
-const { buildTenantFilter, requireCompanyId, resolveCompanyId } = require('../middleware/tenant');
+const { buildTenantFilter, buildTenantFilterAsync, requireCompanyId, resolveCompanyId } = require('../middleware/tenant');
 const AuditEntry = require('../models/AuditEntry');
 const Lead = require('../models/Lead');
+const Company = require('../models/Company');
+const mongoose = require('mongoose');
 
 async function logAudit(actorId, action, moduleName, details = {}, companyId = null) {
   try {
@@ -25,9 +27,8 @@ async function ensureDefaultStages(req, createdBy, isAdmin) {
   ];
 
   const companyId = resolveCompanyId(req);
-  const existingStages = companyId
-    ? await PipelineStage.find({ companyId }).sort({ createdAt: 1 })
-    : await PipelineStage.find({}).sort({ createdAt: 1 });
+  const stageFilter = await buildTenantFilterAsync(req, {});
+  const existingStages = await PipelineStage.find(stageFilter).sort({ createdAt: 1 });
 
   if (existingStages.length > 0) {
     return existingStages;
@@ -64,7 +65,7 @@ exports.getPipeline = async (req, res) => {
     const isAdmin = ['superadmin', 'admin'].includes(String(req.user?.role || '').toLowerCase());
     
     const stages = await ensureDefaultStages(req, req.user._id, isAdmin);
-    const dealFilter = buildTenantFilter(req, {});
+    const dealFilter = await require('../middleware/tenant').buildTenantFilterAsync(req, {});
     
     const deals = await PipelineDeal.find(dealFilter)
       .populate('leadId', 'name phone disposition list assignedTo')
@@ -91,9 +92,15 @@ exports.createStage = async (req, res) => {
       });
     }
 
-    const companyId = req.body?.companyId || resolveCompanyId(req) || req.user?.companyId;
+    const companyId = resolveCompanyId(req) || req.user?.companyId;
     if (!companyId) {
       return res.status(400).json({ message: 'Company context missing. Please select a company or log in as a user with a valid company.' });
+    }
+
+    if (!mongoose.isValidObjectId(companyId)) return res.status(400).json({ message: 'Invalid company context' });
+    if (String(req.user?.role || '').toLowerCase() === 'superadmin') {
+      const owned = await Company.exists({ _id: companyId, createdBy: req.user._id });
+      if (!owned) return res.status(403).json({ message: 'You do not have access to this company' });
     }
 
     const existing = await PipelineStage.findOne({
@@ -133,7 +140,9 @@ exports.createStage = async (req, res) => {
 
 exports.deleteStage = async (req, res) => {
   try {
-    const stage = await PipelineStage.findById(req.params.id);
+    const companyId = requireCompanyId(req);
+    if (!mongoose.isValidObjectId(req.params.id) || !mongoose.isValidObjectId(companyId)) return res.status(400).json({ message: 'Invalid stage or company context' });
+    const stage = await PipelineStage.findOne({ _id: req.params.id, companyId });
 
     if (!stage) {
       return res.status(404).json({
@@ -150,9 +159,7 @@ exports.deleteStage = async (req, res) => {
 
     await PipelineStage.findByIdAndDelete(req.params.id);
 
-    await PipelineDeal.deleteMany({
-      stageId: req.params.id
-    });
+    await PipelineDeal.deleteMany({ stageId: req.params.id, companyId });
 
     await logAudit(
       req.user._id,
@@ -178,8 +185,10 @@ exports.deleteStage = async (req, res) => {
 exports.moveDeal = async (req, res) => {
   try {
     const { dealId, stageId } = req.body;
+    const companyId = requireCompanyId(req);
+    if (!mongoose.isValidObjectId(dealId) || !mongoose.isValidObjectId(stageId) || !mongoose.isValidObjectId(companyId)) return res.status(400).json({ message: 'Invalid deal, stage, or company context' });
 
-    const deal = await PipelineDeal.findById(dealId);
+    const deal = await PipelineDeal.findOne({ _id: dealId, companyId });
 
     if (!deal) {
       return res.status(404).json({
@@ -189,7 +198,7 @@ exports.moveDeal = async (req, res) => {
     if (String(deal.createdBy) !== String(req.user._id)) {
       return res.status(403).json({ message: 'You do not have permission to move this deal.' });
     }
-    const stage = await PipelineStage.findById(stageId);
+    const stage = await PipelineStage.findOne({ _id: stageId, companyId });
 
     if (!stage) {
       return res.status(404).json({
@@ -227,14 +236,18 @@ exports.addDeal = async (req, res) => {
       });
     }
 
-    const existing = await PipelineDeal.findOne({ leadId, createdBy: req.user._id });
+    const companyId = requireCompanyId(req);
+    if (!mongoose.isValidObjectId(leadId) || !mongoose.isValidObjectId(companyId)) return res.status(400).json({ message: 'Invalid lead or company context' });
+
+    const existing = await PipelineDeal.findOne({ leadId, companyId });
 
     if (existing) {
       return res.json(existing);
     }
 
     if (stageId) {
-      const stage = await PipelineStage.findById(stageId);
+      if (!mongoose.isValidObjectId(stageId)) return res.status(400).json({ message: 'Invalid stage' });
+      const stage = await PipelineStage.findOne({ _id: stageId, companyId });
       if (!stage) {
         return res.status(404).json({
           message: 'Stage not found'
@@ -252,7 +265,7 @@ exports.addDeal = async (req, res) => {
       )?._id ||
       stages[0]?._id;
 
-    const lead = await Lead.findById(leadId);
+    const lead = await Lead.findOne({ _id: leadId, companyId });
 
     if (!lead) {
       return res.status(404).json({

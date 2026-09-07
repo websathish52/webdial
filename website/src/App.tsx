@@ -1,5 +1,6 @@
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
+import { TrialDialog } from "@/components/site/TrialDialog";
 import heroDashboard from "@/assets/hero-dashboard.jpg";
 import telecallerDashboard from "@/assets/telecaller-dashboard.jpg";
 import teamCallcenter from "@/assets/team-callcenter.jpg";
@@ -69,7 +70,7 @@ export function App() {
               </div>
 
               <div className="cta-row">
-                <a href="/contact" className="primary-btn zoom-glow">Start free trial</a>
+                <TrialDialog trigger={<button type="button" className="primary-btn zoom-glow">Start free trial</button>} />
                 <a href="/master" className="secondary-btn">See Master Console</a>
               </div>
 

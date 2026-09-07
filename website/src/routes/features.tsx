@@ -1,10 +1,10 @@
-import { Link } from "react-router-dom";
 import {
   PhoneCall, Users, MessageSquare, BarChart3, Workflow, ShieldCheck, ClipboardList,
   Wrench, Megaphone, Server, Mic, Puzzle, CalendarClock, UserCheck,
 } from "lucide-react";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
+import { TrialDialog } from "@/components/site/TrialDialog";
 import { Button } from "@/components/ui/button";
 
 const modules = [
@@ -57,9 +57,13 @@ export default function Features() {
           <div className="glass-card mt-14 rounded-3xl p-10 text-center">
             <h2 className="text-2xl font-bold">Want to see it on your data?</h2>
             <p className="mt-3 text-muted-foreground">We will run a live demo with your lead list.</p>
-            <Button asChild variant="hero" size="lg" className="zoom-glow mt-6">
-              <Link to="/contact">Start free trial</Link>
-            </Button>
+            <TrialDialog
+              trigger={
+                <Button variant="hero" size="lg" className="zoom-glow mt-6">
+                  Start free trial
+                </Button>
+              }
+            />
           </div>
         </section>
       </main>

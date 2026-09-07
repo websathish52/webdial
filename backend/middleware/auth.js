@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Company = require('../models/Company');
+const Subscription = require('../models/Subscription');
 
 // --- Verifies JWT and attaches the logged-in user to req.user ---
 exports.protect = async (req, res, next) => {
@@ -14,6 +16,31 @@ exports.protect = async (req, res, next) => {
     req.user = await User.findById(decoded.id).select('-password');
     if (!req.user) {
       return res.status(401).json({ message: 'Not authorized, user not found' });
+    }
+
+    if (req.user.companyId && !['master'].includes(String(req.user.role || '').toLowerCase())) {
+      const company = await Company.findById(req.user.companyId).select('accountStatus subscriptionId');
+      if (company) {
+        const subscription = company.subscriptionId
+          ? await Subscription.findById(company.subscriptionId).select('status expiryDate type plan')
+          : null;
+        const expired = subscription && subscription.type !== 'MANUAL' && subscription.expiryDate && subscription.expiryDate <= new Date();
+        const blockedStatus = company.accountStatus === 'EXPIRED' || company.accountStatus === 'SUSPENDED' || subscription?.status === 'EXPIRED' || subscription?.status === 'SUSPENDED';
+
+        if (expired || blockedStatus) {
+          req.subscriptionExpired = true;
+          if (expired && subscription && subscription.status !== 'EXPIRED') {
+            await Subscription.findByIdAndUpdate(subscription._id, { status: 'EXPIRED' });
+            await Company.findByIdAndUpdate(company._id, { accountStatus: 'EXPIRED' });
+          }
+          if (!req.originalUrl.startsWith('/api/payments') && !req.originalUrl.startsWith('/api/auth')) {
+            return res.status(403).json({
+              code: 'SUBSCRIPTION_EXPIRED',
+              message: company.accountStatus === 'SUSPENDED' || subscription?.status === 'SUSPENDED' ? 'Account suspended' : 'Subscription expired',
+            });
+          }
+        }
+      }
     }
     next();
   } catch (err) {

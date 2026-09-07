@@ -1,12 +1,13 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 function useAppSearch(): any { const [sp] = useSearchParams(); return Object.fromEntries(sp.entries()); }
-import { store, useStore, type Lead } from "@/lib/mock-store";
+import { store, useCurrentMember, useStore, type Lead } from "@/lib/mock-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import api, { resolveFileUrl } from "@/lib/api";
+import { readSelection, writeSelection } from "@/lib/persistent-selection";
 import { Send, MessageCircle, Search, Phone } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,6 +16,7 @@ type MessageTemplate = { _id?: string; id?: string; name: string; desc?: string;
 
 function WhatsappPage() {
   const q = useAppSearch();
+  const member = useCurrentMember();
   const [leads, setLeads] = useState<Lead[]>([]);
   const messages = useStore(s => s.messages);
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
@@ -70,13 +72,17 @@ function WhatsappPage() {
     return Array.from(map.values());
   }, [leads, messages]);
 
-  const [selectedList, setSelectedList] = useState("all");
+  const [selectedList, setSelectedList] = useState(() => readSelection(member, "whatsapp-list") || "all");
   const [search, setSearch] = useState("");
   const [active, setActive] = useState<{ phone: string; name: string } | null>(null);
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [text, setText] = useState("");
   const [selectedAttachment, setSelectedAttachment] = useState<MessageTemplate | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
+
+  useEffect(() => {
+    writeSelection(member, "whatsapp-list", selectedList);
+  }, [member, selectedList]);
 
   useEffect(() => {
     if (q.phone) setActive({ phone: q.phone, name: q.name || q.phone });

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronDown, Menu, X } from "lucide-react";
 import logo from "@/assets/logo/webdial-png.png";
 import { Button } from "@/components/ui/button";
+import { TrialDialog } from "@/components/site/TrialDialog";
 
 const nav = [
   { to: "/", label: "Home" },
@@ -87,14 +88,17 @@ export function Header() {
           >
             <a href="/auth">Sign in</a>
           </Button>
-          <Button
-            asChild
-            variant="hero"
-            size="sm"
-            className="zoom-glow px-4 py-4 text-md font-semibold shadow-[0_10px_30px_rgba(8,58,205,0.35)] transition-all duration-300 hover:scale-[1.02] lg:text-sm"
-          >
-            <a href="/contact">Start free trial</a>
-          </Button>
+          <TrialDialog
+            trigger={
+              <Button
+                variant="hero"
+                size="sm"
+                className="zoom-glow px-4 py-4 text-md font-semibold shadow-[0_10px_30px_rgba(8,58,205,0.35)] transition-all duration-300 hover:scale-[1.02] lg:text-sm"
+              >
+                Start free trial
+              </Button>
+            }
+          />
         </div>
 
         <button
@@ -167,11 +171,13 @@ export function Header() {
                 Sign in
               </a>
             </Button>
-            <Button asChild variant="hero" className="zoom-glow mt-3 transition-all duration-300 hover:scale-[1.02]">
-              <a href="/contact" onClick={() => setOpen(false)}>
-                Start free trial
-              </a>
-            </Button>
+            <TrialDialog
+              trigger={
+                <Button variant="hero" className="zoom-glow mt-3 transition-all duration-300 hover:scale-[1.02]" onClick={() => setOpen(false)}>
+                  Start free trial
+                </Button>
+              }
+            />
           </nav>
         </div>
       )}

@@ -64,17 +64,17 @@ export default function Header({ onMenu, dark, onToggleDark }: { onMenu: () => v
   };
 
   return (
-    <header className="sticky top-0 z-30 h-14 sm:h-16 bg-card border-b border-border px-3 sm:px-6 flex items-center justify-between gap-2">
-      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-        <button className="lg:hidden p-2 rounded-lg hover:bg-accent shrink-0" onClick={onMenu}><Menu className="size-5"/></button>
-        <Phone className="size-4 sm:size-5 text-primary shrink-0" />
-        <h1 className="font-semibold text-base sm:text-lg capitalize truncate">
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-border bg-card px-3 sm:h-16 sm:px-6">
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+        <button className="shrink-0 rounded-lg p-2 hover:bg-accent lg:hidden" onClick={onMenu}><Menu className="size-5"/></button>
+        <Phone className="size-4 shrink-0 text-primary sm:size-5" />
+        <h1 className="truncate text-base font-semibold capitalize sm:text-lg">
           {pathname.replace("/","").replace("-"," ") || "Dashboard"}
         </h1>
-        {isAdmin && <span className="hidden sm:inline text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded font-bold shrink-0">ADMIN</span>}
+        {isAdmin && <span className="hidden shrink-0 rounded bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary sm:inline">ADMIN</span>}
       </div>
-      <div className="flex items-center gap-1 sm:gap-2 text-muted-foreground shrink-0 relative">
-        <Button variant="ghost" className="hidden sm:inline-flex text-primary font-medium gap-1"><HelpCircle className="size-4" /> Help</Button>
+      <div className="relative flex shrink-0 items-center gap-1 text-muted-foreground sm:gap-2">
+        <Button variant="ghost" className="hidden gap-1 text-primary sm:inline-flex"><HelpCircle className="size-4" /> Help</Button>
         <Button variant="ghost" size="icon" onClick={onToggleDark}>{dark ? <Sun className="size-4"/> : <Moon className="size-4"/>}</Button>
         <Button variant="ghost" size="icon" onClick={() => location.reload()}><RefreshCw className="size-4" /></Button>
         <div className="relative">

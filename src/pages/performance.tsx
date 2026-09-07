@@ -96,7 +96,7 @@ function PerformancePage() {
           </div>
           <div className="flex flex-wrap gap-2 mt-3 sm:mt-0">
             <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-semibold" style={{placeContent:"center"}}>Analytics</span>
-            <Button size="sm" variant="secondary" className="gap-1"><Download className="size-3.5"/> Export</Button>
+            <Button size="sm" variant="outline" className="gap-1 border-blue-600 bg-white text-blue-700 hover:bg-blue-50"><Download className="size-3.5"/> Export</Button>
           </div>
         </div>
       </div>

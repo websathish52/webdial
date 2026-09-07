@@ -53,6 +53,20 @@ const CompanySettingsSchema = new mongoose.Schema({
     mode: { type: String, enum: ['list', 'system'], default: 'list' },
   },
   defaultDialer: { type: String, default: 'Phone Dialer' },
+  whatsappAccount: {
+    businessName: { type: String, default: '' },
+    phoneNumber: { type: String, default: '' },
+    businessId: { type: String, default: '' },
+  },
+  whatsappCredits: {
+    balance: { type: Number, default: 100, min: 0 },
+  },
+  whatsappAutomation: {
+    enabled: { type: Boolean, default: false },
+    autoReply: { type: Boolean, default: false },
+    welcomeFlow: { type: Boolean, default: false },
+    missedCallTrigger: { type: Boolean, default: false },
+  },
   customStatuses: [{ key: String, name: String, description: String, color: String }],
   messageTemplates: [{
     name: String,

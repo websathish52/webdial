@@ -23,6 +23,7 @@ import { Testimonials } from "@/components/site/Testimonials";
 import { Faq } from "@/components/site/Faq";
 import { DataSafe } from "@/components/site/DataSafe";
 import { ContactStrip } from "@/components/site/ContactStrip";
+import { TrialDialog } from "@/components/site/TrialDialog";
 import { Button } from "@/components/ui/button";
 
 const homepagePlans = [
@@ -122,14 +123,7 @@ export default function Home() {
               </div>
 
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Button
-                  asChild
-                  variant="hero"
-                  size="lg"
-                  className="zoom-glow transition-all duration-300 hover:scale-[1.04]"
-                >
-                  <Link to="/contact">Start free trial</Link>
-                </Button>
+                <TrialDialog trigger={<Button variant="hero" size="lg" className="zoom-glow transition-all duration-300 hover:scale-[1.04]">Start free trial</Button>} />
                 <Button
                   asChild
                   variant="outlineGlow"
@@ -319,7 +313,7 @@ export default function Home() {
                     <ul className="mt-6 space-y-3 text-sm">
                       {plan.features.map((feature) => <li key={feature} className="flex items-center gap-2"><CheckCircle2 className="size-4 text-success" />{feature}</li>)}
                     </ul>
-                    <Button asChild variant={plan.highlight ? "hero" : "outlineGlow"} className="zoom-glow mt-8 w-full border-2 border-[#2f70ec] rounded-sm"><Link to="/contact">Start free trial</Link></Button>
+                    <TrialDialog plan={plan.name === "Pro" ? "PRO" : "STARTED"} trigger={<Button variant={plan.highlight ? "hero" : "outlineGlow"} className="zoom-glow mt-8 w-full border-2 border-[#2f70ec] rounded-sm">Start free trial</Button>} />
                   </div>
                 </Reveal>
               ))}
@@ -412,14 +406,7 @@ export default function Home() {
                 numbers you need.
               </p>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
-                <Button
-                  asChild
-                  variant="hero"
-                  size="lg"
-                  className="zoom-glow transition-all duration-300 hover:scale-[1.04]"
-                >
-                  <Link to="/contact">Start free trial</Link>
-                </Button>
+                <TrialDialog trigger={<Button variant="hero" size="lg" className="zoom-glow transition-all duration-300 hover:scale-[1.04]">Start free trial</Button>} />
                 <Button asChild variant="outlineGlow" size="lg">
                   <Link to="/pricing" className="rounded-sm " style={{"backgroundColor": "#050505", "color": "#fff"}}>
                     View pricing

@@ -117,15 +117,20 @@ async function request(path: string, opts: RequestInit = {}) {
     const res = await fetch(buildApiUrl(path), { ...opts, headers: { ...headers, ...(opts.headers || {}) } });
     if (!res.ok) {
       if (res.status === 401 || res.status === 403) {
-        clearAuthStorage();
+        if (res.status === 401) clearAuthStorage();
       }
       const text = await res.text();
       let json;
       try { json = JSON.parse(text); } catch { json = { message: text }; }
+      if (json.code === 'TRIAL_CALL_LIMIT_REACHED' || json.code === 'TRIAL_DAILY_CALL_LIMIT_REACHED') {
+        window.dispatchEvent(new CustomEvent('ifox-trial-limit-reached', { detail: json }));
+      }
       if (res.status === 507 || json.storageFull) {
         window.dispatchEvent(new CustomEvent('ifox-storage-full', { detail: { message: json.message } }));
       }
-      const err = new Error(json.message || res.statusText);
+      const err = new Error(json.message || res.statusText) as Error & { code?: string };
+      err.code = json.code;
+      if (json.code === 'SUBSCRIPTION_EXPIRED' && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('ifox-subscription-expired'));
       throw err;
     }
     return res.json().catch(() => null);
@@ -143,6 +148,14 @@ export function notifyCrmUpdate() {
 
 export async function login(emailOrUser: string, password: string) {
   return await request('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: emailOrUser, password }) });
+}
+
+export async function startTrial(payload: {
+  firstName: string; lastName: string; companyName: string; organisation?: string;
+  phone: string; email: string; password: string; plan: 'STARTED' | 'PRO';
+  numberOfUsers: number; deviceIdentifier: string;
+}) {
+  return await request('/api/auth/trial', { method: 'POST', body: JSON.stringify(payload) });
 }
 
 export async function me() {
@@ -191,6 +204,25 @@ export async function getLeads(filters?: { list?: string; disposition?: string; 
   const qs = params.toString();
   return await request(`/api/crm/leads${qs ? '?' + qs : ''}`);
 }
+
+export async function getProducts() { return await request('/api/products'); }
+export async function createProduct(data: any) { return await request('/api/products', { method: 'POST', body: JSON.stringify(data) }); }
+export async function deleteProduct(id: string) { return await request(`/api/products/${id}`, { method: 'DELETE' }); }
+export async function getAutomationRules() { return await request('/api/automation'); }
+export async function createAutomationRule(data: any) { return await request('/api/automation', { method: 'POST', body: JSON.stringify(data) }); }
+export async function updateAutomationRule(id: string, enabled: boolean) { return await request(`/api/automation/${id}`, { method: 'PUT', body: JSON.stringify({ enabled }) }); }
+export async function deleteAutomationRule(id: string) { return await request(`/api/automation/${id}`, { method: 'DELETE' }); }
+export async function getForm() { return await request('/api/forms'); }
+export async function saveForm(data: any) { return await request('/api/forms', { method: 'PUT', body: JSON.stringify(data) }); }
+export async function updateFormSettings(data: { requireByDefault?: boolean; listAssigned?: string; active?: boolean }) {
+  return await request('/api/forms/settings', { method: 'PUT', body: JSON.stringify(data) });
+}
+export async function getWebForm() { return await request('/api/forms/web-form'); }
+export async function saveWebForm(data: any) { return await request('/api/forms/web-form', { method: 'PUT', body: JSON.stringify(data) }); }
+export async function getContactLists() { return await request('/api/voice-broadcast/lists'); }
+export async function getVoiceBroadcastStatus() { return await request('/api/voice-broadcast/status'); }
+export async function getVoiceBroadcastCampaigns() { return await request('/api/voice-broadcast/campaigns'); }
+export async function createVoiceBroadcastCampaign(data: any) { return await request('/api/voice-broadcast/campaigns', { method: 'POST', body: JSON.stringify(data) }); }
 
 export async function createLead(lead: { name: string; phone: string; list: string; email?: string; company?: string; address?: string }) {
   const result = await request('/api/crm/leads', { method: 'POST', body: JSON.stringify(lead) });
@@ -247,6 +279,9 @@ export async function rechurnList(id: string) {
 // ============ DIALER & CALLS ============
 export async function logCall(call: { leadId: string; phone: string; name: string; duration: number; disposition: string; notes?: string; recordingUrl?: string; agent?: string }) {
   const result = await request('/api/dialer/call-logs', { method: 'POST', body: JSON.stringify(call) });
+  if (result?.trialUsage && (result.trialUsage.totalCalls >= result.trialUsage.totalLimit || result.trialUsage.dailyCalls >= result.trialUsage.dailyLimit)) {
+    window.dispatchEvent(new CustomEvent('ifox-trial-limit-reached', { detail: result.trialUsage }));
+  }
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('ifox-call-logged'));
   return result;
 }
@@ -261,6 +296,13 @@ export async function getCallLogs(filters?: { agent?: string; limit?: number; sk
   }
   const qs = params.toString();
   return await request(`/api/dialer/call-logs${qs ? '?' + qs : ''}`);
+}
+
+export async function getLeaderboard(period: 'daily' | 'weekly' | 'monthly' = 'weekly', range?: { start?: string; end?: string }) {
+  const params = new URLSearchParams({ period });
+  if (range?.start) params.set('start', range.start);
+  if (range?.end) params.set('end', range.end);
+  return await request(`/api/leaderboard?${params.toString()}`);
 }
 
 export async function getDashboardStats() {
@@ -286,7 +328,7 @@ export async function getMember(id: string) {
   return await request(`/api/members/${id}`);
 }
 
-export async function updateMember(id: string, patch: { name?: string; email?: string; phone?: string; role?: string; username?: string; lists?: string[]; teams?: string[]; companyId?: string }) {
+export async function updateMember(id: string, patch: { name?: string; email?: string; phone?: string; role?: string; username?: string; lists?: string[]; teams?: string[]; companyId?: string; flags?: any; permissions?: any }) {
   return await request(`/api/members/${id}`, { method: 'PUT', body: JSON.stringify(patch) });
 }
 
@@ -345,12 +387,38 @@ export async function getCampaigns() {
   return await request('/api/marketing/campaigns');
 }
 
+export async function getGoPages() { return await request('/api/gopages'); }
+export async function analyzeGoPage(data: { name: string; websiteUrl?: string; offeringType?: string }) {
+  return await request('/api/gopages/analyze', { method: 'POST', body: JSON.stringify(data) });
+}
+export async function createGoPage(data: any) { return await request('/api/gopages', { method: 'POST', body: JSON.stringify(data) }); }
+export async function deleteGoPage(id: string) { return await request(`/api/gopages/${id}`, { method: 'DELETE' }); }
+
 export async function createCampaign(payload: { name: string; script: string; status?: string }) {
   return await request('/api/marketing/campaigns', { method: 'POST', body: JSON.stringify(payload) });
 }
 
 export async function updateCampaign(id: string, patch: any) {
   return await request(`/api/marketing/campaigns/${id}`, { method: 'PUT', body: JSON.stringify(patch) });
+}
+
+export async function getWhatsappBroadcasts() {
+  return await request('/api/whatsapp/broadcasts');
+}
+
+export async function createWhatsappBroadcast(payload: any) {
+  return await request('/api/whatsapp/broadcasts', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function deleteWhatsappBroadcast(id: string) {
+  return await request(`/api/whatsapp/broadcasts/${id}`, { method: 'DELETE' });
+}
+
+export async function getWhatsappReport(from?: string, to?: string) {
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  return await request(`/api/whatsapp/reports${params.toString() ? `?${params.toString()}` : ''}`);
 }
 
 // ============ PIPELINE ============
@@ -411,6 +479,8 @@ export async function createSuperAdmin(payload: {
   username?: string;
   phone?: string;
   password: string;
+  accessType?: 'MANUAL' | 'FREE_TRIAL' | 'FREE' | 'STARTED' | 'PRO';
+  plan?: 'FREE' | 'STARTED' | 'PRO';
 }) {
   return await request('/api/master/superadmins', { method: 'POST', body: JSON.stringify(payload) });
 }
@@ -422,6 +492,21 @@ export async function updateSuperAdmin(id: string, patch: any) {
 export async function deleteSuperAdmin(id: string) {
   return await request(`/api/master/superadmins/${id}`, { method: 'DELETE' });
 }
+export async function getMasterCustomers() { return await request('/api/master/customers'); }
+export async function getMasterPortalAccess() { return await request('/api/master/portal-access'); }
+export async function getMasterModuleAccess(companyId: string) { return await request(`/api/master/module-access/${companyId}`); }
+export async function updateMasterModuleAccess(companyId: string, roles: Record<string, Record<string, boolean>>) { return await request(`/api/master/module-access/${companyId}`, { method: 'PUT', body: JSON.stringify({ roles }) }); }
+export async function createMasterCustomer(payload: any) { return await request('/api/master/customers', { method: 'POST', body: JSON.stringify(payload) }); }
+export async function updateMasterCustomerStatus(companyId: string, status: string) { return await request(`/api/master/customers/${companyId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }); }
+export async function updateMasterCustomer(companyId: string, payload: any) { return await request(`/api/master/customers/${companyId}`, { method: 'PUT', body: JSON.stringify(payload) }); }
+export async function deleteMasterCustomerAccount(companyId: string) { return await request(`/api/company/${companyId}`, { method: 'DELETE' }); }
+
+// ============ SUPPORT ============
+export async function getSupportTickets() { return await request('/api/support'); }
+export async function createSupportTicket(payload: { subject: string; description: string; priority?: string }) { return await request('/api/support', { method: 'POST', body: JSON.stringify(payload) }); }
+export async function updateSupportTicket(id: string, patch: any) { return await request(`/api/support/${id}`, { method: 'PUT', body: JSON.stringify(patch) }); }
+export async function deleteSupportTicket(id: string) { return await request(`/api/support/${id}`, { method: 'DELETE' }); }
+export async function addSupportReply(id: string, payload: { message: string; senderName?: string }) { return await request(`/api/support/${id}/reply`, { method: 'POST', body: JSON.stringify(payload) }); }
 
 // ============ AUDIT ============
 export async function getAudit(filters?: { actor?: string; action?: string; module?: string; startDate?: string; endDate?: string; limit?: number }) {
@@ -456,6 +541,23 @@ export async function updateUniqueContactsSetting(mode: string) { return await r
 // Default Dialer
 export async function getDialerSettings() { return await request('/api/settings/dialer'); }
 export async function updateDialerSettings(selectedDialer: string) { return await request('/api/settings/dialer', { method: 'PUT', body: JSON.stringify({ selectedDialer }) }); }
+export async function getWhatsappAutomation() { return await request('/api/settings/whatsapp-automation'); }
+export async function updateWhatsappAutomation(data: any) { return await request('/api/settings/whatsapp-automation', { method: 'PUT', body: JSON.stringify(data) }); }
+export async function getWhatsappSettings() {
+  try {
+    return await request('/api/settings/whatsapp');
+  } catch (error: any) {
+    // Keep older backend deployments usable until they receive the new route.
+    if (error?.message?.includes('Cannot GET') || error?.message?.includes('404')) {
+      const automation = await getWhatsappAutomation();
+      return { account: {}, automation, integration: null };
+    }
+    throw error;
+  }
+}
+export async function updateWhatsappSettings(data: any) { return await request('/api/settings/whatsapp', { method: 'PUT', body: JSON.stringify(data) }); }
+export async function getWhatsappCredits() { return await request('/api/settings/whatsapp/credits'); }
+export async function requestWhatsappCredits(data: { credits: number; amount: number }) { return await request('/api/settings/whatsapp/credits/recharge', { method: 'POST', body: JSON.stringify(data) }); }
 
 // Custom Status
 export async function getCustomStatuses() { return await request('/api/settings/custom-statuses'); }
@@ -477,25 +579,37 @@ export async function updateIntegration(provider: string, data: any) { return aw
 export async function getPbxSettings() { return await request('/api/pbx'); }
 export async function updatePbxSettings(data: any) { return await request('/api/pbx', { method: 'PUT', body: JSON.stringify(data) }); }
 export async function getPayments() { return await request('/api/payments'); }
+export async function getCurrentSubscription() { return await request('/api/payments/subscription'); }
 export async function getPaymentProfile() { return await request('/api/payments/profile'); }
 export async function updatePaymentProfile(profile: any) { return await request('/api/payments/profile', { method: 'PUT', body: JSON.stringify(profile) }); }
 export async function createPayment(data: any) { return await request('/api/payments', { method: 'POST', body: JSON.stringify(data) }); }
-export async function markPaymentPaid(id: string) { return await request(`/api/payments/${id}/paid`, { method: 'PUT' }); }
+export async function deletePayment(id: string) { return await request(`/api/payments/${id}`, { method: 'DELETE' }); }
+export async function deletePayments(ids: string[]) { return await request('/api/payments', { method: 'DELETE', body: JSON.stringify({ ids }) }); }
+export async function markPaymentProcessing(id: string) { return await request(`/api/payments/${id}/processing`, { method: 'PUT' }); }
+export async function approvePayment(id: string) { return await request(`/api/payments/${id}/paid`, { method: 'PUT' }); }
+export async function rejectPayment(id: string) { return await request(`/api/payments/${id}/reject`, { method: 'PUT' }); }
 
 export default {
   login, me, changePassword, registerUser,
-  getLeads, createLead, importLeads, updateLead, deleteLead,
+  getLeads, createLead, importLeads, updateLead, deleteLead, getProducts, createProduct, deleteProduct,
+  getAutomationRules, createAutomationRule, updateAutomationRule, deleteAutomationRule,
+  getForm, saveForm, updateFormSettings, getWebForm, saveWebForm,
+  getContactLists, getVoiceBroadcastStatus, getVoiceBroadcastCampaigns, createVoiceBroadcastCampaign,
   getCompanies, createCompany, getCompanyAccount, changeCompanyAccountPassword, deleteCompany,
   getLists, createList, updateList, deleteList, rechurnList,
-  logCall, getCallLogs, getDashboardStats, getRecordings,
+  logCall, getCallLogs, getLeaderboard, getDashboardStats, getRecordings,
   getMembers, getMember, updateMember, updateMemberPassword, deleteMember,
   getSettings, updateSettings, getPaymentProfile, updatePaymentProfile,
   uploadFile, getUploads, deleteUpload,
   getCampaigns, createCampaign, updateCampaign,
+  getGoPages, analyzeGoPage, createGoPage, deleteGoPage,
+  getWhatsappBroadcasts, createWhatsappBroadcast, deleteWhatsappBroadcast,
+  getWhatsappReport,
   getPipeline, createStage, deleteStage, moveDeal, addDeal,
   getTasks, createTask, updateTask, deleteTask,
   getNotifications, markNotificationRead,
-  getSuperAdmins, createSuperAdmin, updateSuperAdmin, deleteSuperAdmin,
+  getSuperAdmins, createSuperAdmin, updateSuperAdmin, deleteSuperAdmin, getMasterCustomers, getMasterPortalAccess, getMasterModuleAccess, updateMasterModuleAccess, createMasterCustomer, updateMasterCustomer, updateMasterCustomerStatus, deleteMasterCustomerAccount,
+  getSupportTickets, createSupportTicket, updateSupportTicket, deleteSupportTicket, addSupportReply,
   getAudit,
   // Settings
   getCompanyInfo, updateCompanyInfo, uploadCompanyLogo, removeCompanyLogo,
@@ -504,7 +618,10 @@ export default {
   getDialerSettings, updateDialerSettings,
   getCustomStatuses, createCustomStatus, updateCustomStatus, deleteCustomStatus,
   getMessageTemplates, createMessageTemplate, updateMessageTemplate, deleteMessageTemplate, uploadMessageTemplateAttachment,
+  getWhatsappAutomation, updateWhatsappAutomation,
+  getWhatsappSettings, updateWhatsappSettings,
+  getWhatsappCredits, requestWhatsappCredits,
   getStorageUsage,
   getIntegrations, updateIntegration, getPbxSettings, updatePbxSettings,
-  getPayments, createPayment, markPaymentPaid,
+  getPayments, getCurrentSubscription, createPayment, deletePayment, deletePayments, markPaymentProcessing, approvePayment, rejectPayment,
 };

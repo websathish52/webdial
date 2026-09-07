@@ -20,7 +20,7 @@ type Invoice = {
   user: number;
   amount: string;
   expiry: string;
-  status: "Paid" | "Deleted" | "Pending";
+  status: "Paid" | "Deleted" | "Pending" | "Processing" | "Payment Failed" | "Rejected";
 };
 
 type PaymentProfile = {
@@ -45,10 +45,12 @@ const emptyProfile: PaymentProfile = {
 export default function PaymentPage() {
   const [searchParams] = useSearchParams();
   const requestedPlan = searchParams.get("plan") || "Starter";
-  const plan = PLAN_PRICES[requestedPlan] ? requestedPlan : "Starter";
+  const [plan, setPlan] = useState(PLAN_PRICES[requestedPlan] ? requestedPlan : "Starter");
   const pricePerUser = PLAN_PRICES[plan];
   const [renewal, setRenewal] = useState("monthly");
-  const [users, setUsers] = useState(4);
+  const [users, setUsers] = useState(0);
+  const [subscription, setSubscription] = useState<any>(null);
+  const [memberCount, setMemberCount] = useState(0);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
@@ -56,27 +58,100 @@ export default function PaymentPage() {
   const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null);
   const [profileSaved, setProfileSaved] = useState(false);
   const [profile, setProfile] = useState<PaymentProfile>(emptyProfile);
-  const cycleMultiplier = renewal === "yearly" ? 12 : renewal === "halfyearly" ? 6 : 1;
-  const totalAmount = pricePerUser * users * cycleMultiplier;
+  const [invoicePage, setInvoicePage] = useState(1);
+  const hasPaidSubscription = Boolean(
+    subscription
+      && String(subscription.type || '').toUpperCase() === 'PAID'
+      && String(subscription.status || '').toUpperCase() === 'ACTIVE'
+      && String(subscription.paymentStatus || '').toUpperCase() === 'SUCCESS',
+  );
+  const isTrialActive = Boolean(subscription && String(subscription.type || '').toUpperCase() === 'FREE_TRIAL' && subscription.status === 'ACTIVE');
+  const currentPaidSeatCount = hasPaidSubscription ? Number(subscription?.numberOfUsers || 0) : 0;
+  const paidUsers = hasPaidSubscription ? currentPaidSeatCount : 0;
+  const additionalUsers = Math.max(0, memberCount - paidUsers);
+  const renewalOptions = ["monthly", "halfyearly", "yearly"] as const;
+  const showTrialOption = !isTrialActive && !(hasPaidSubscription);
+  const cycleLabel = hasPaidSubscription
+    ? subscription.billingPeriod === 'halfyearly'
+      ? 'Half Yearly'
+      : subscription.billingPeriod === 'annual' || subscription.billingPeriod === 'yearly'
+        ? 'Annual'
+        : 'Monthly'
+    : isTrialActive ? '7-Day Trial Active' : 'Awaiting payment approval';
+  const activePlanLabel = hasPaidSubscription ? subscription.plan : isTrialActive ? 'FREE TRIAL' : 'Awaiting approval';
+  const proratedUntilLabel = hasPaidSubscription && subscription?.expiryDate
+    ? new Date(subscription.expiryDate).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : 'current billing expiry';
 
   useEffect(() => {
-    api.getPaymentProfile()
-      .then((savedProfile: Partial<PaymentProfile>) => setProfile({ ...emptyProfile, ...savedProfile }))
-      .catch(err => toast.error(err.message || "Could not load payment profile."));
-    api.getPayments()
-      .then((payments: any[]) => setInvoices((Array.isArray(payments) ? payments : []).map((payment) => ({
-        _id: payment._id,
-        date: new Date(payment.createdAt).toLocaleString('en-IN'),
-        user: payment.users,
-        amount: `₹${Number(payment.amount || 0).toLocaleString('en-IN')}`,
-        expiry: payment.expiry ? new Date(payment.expiry).toLocaleDateString('en-IN') : '-',
-        status: payment.status,
-      }))))
-      .catch(err => toast.error(err.message || "Could not load invoices."))
+    Promise.all([
+      api.getCurrentSubscription(),
+      api.getMembers().catch(() => []),
+      api.getPaymentProfile().catch(() => emptyProfile),
+      api.getPayments().catch(() => [])
+    ])
+      .then(([subscriptionData, members, savedProfile, payments]) => {
+        setSubscription(subscriptionData);
+        const count = Array.isArray(members) ? members.length : 0;
+        setMemberCount(count);
+        if (String(subscriptionData?.type || '').toUpperCase() === 'PAID') {
+          setRenewal('monthly');
+        } else if (!subscriptionData || String(subscriptionData.type || '').toUpperCase() !== 'FREE_TRIAL') {
+          setRenewal('monthly');
+        }
+        const defaultUsers = Math.max(1, count, Number(subscriptionData?.numberOfUsers || 0));
+        setUsers(defaultUsers);
+        setProfile({ ...emptyProfile, ...savedProfile });
+        setInvoices((Array.isArray(payments) ? payments : []).map((payment) => ({
+          _id: payment._id,
+          date: new Date(payment.createdAt).toLocaleString('en-IN'),
+          user: payment.users,
+          amount: `₹${Number(payment.finalAmount ?? payment.amount ?? 0).toLocaleString('en-IN')}`,
+          expiry: payment.expiry ? new Date(payment.expiry).toLocaleDateString('en-IN') : '-',
+          status: payment.status === 'Failed' ? 'Payment Failed' : payment.status === 'Processing' ? 'Processing' : payment.status === 'Paid' ? 'Paid' : 'Pending',
+        })));
+      })
+      .catch((err) => toast.error(err.message || "Could not load subscription."))
       .finally(() => setLoading(false));
   }, []);
 
+  const cycleMultiplier = renewal === "yearly" ? 12 : renewal === "halfyearly" ? 6 : 1;
+  const minimumUserCount = Math.max(1, memberCount || 1);
+  const selectedUserCount = Math.max(minimumUserCount, Number(users) || minimumUserCount);
+  const purchaseUserCount = isTrialActive
+    ? selectedUserCount
+    : hasPaidSubscription
+      ? Math.max(0, selectedUserCount - currentPaidSeatCount)
+      : selectedUserCount;
+  const originalAmount = pricePerUser * purchaseUserCount * cycleMultiplier;
+  const discountRate = renewal === "halfyearly" ? 0.1 : renewal === "yearly" ? 0.15 : 0;
+  const discountAmount = originalAmount * discountRate;
+  const totalAmount = Math.max(0, originalAmount - discountAmount);
+  const invoicePageSize = 5;
+  const filteredInvoices = invoices.filter((inv) => {
+    const term = `${inv.date} ${inv.user} ${inv.amount} ${inv.expiry} ${inv.status}`.toLowerCase();
+    return term.includes('');
+  });
+  const totalInvoicePages = Math.max(1, Math.ceil(filteredInvoices.length / invoicePageSize));
+  const paginatedInvoices = filteredInvoices.slice((invoicePage - 1) * invoicePageSize, invoicePage * invoicePageSize);
+
+  useEffect(() => {
+    setInvoicePage(1);
+  }, [invoices.length]);
+
+  useEffect(() => {
+    setUsers((current) => Math.max(minimumUserCount, Number(current) || minimumUserCount));
+  }, [minimumUserCount]);
+
   const startPayment = async () => {
+    if (renewal === "trial") {
+      toast.info("Your 7-day free trial is already active. Choose a paid billing cycle to subscribe.");
+      return;
+    }
+    if (purchaseUserCount <= 0) {
+      toast.info("No additional user seats are due for this purchase. Your current paid seats already cover the selected users.");
+      return;
+    }
     const requiredFields: Array<keyof PaymentProfile> = ["company", "firstName", "lastName", "email", "phone", "address", "state", "city", "pincode", "country"];
     if (requiredFields.some((field) => !profile[field].trim())) {
       toast.error("Please fill all required payment profile fields before paying");
@@ -84,7 +159,13 @@ export default function PaymentPage() {
     }
     setPaying(true);
     try {
-      const payment = await api.createPayment({ plan, pricePerUser, users, cycle: renewal, profile: { ...profile, name: `${profile.firstName} ${profile.lastName}`.trim() } });
+      const payment = await api.createPayment({
+        plan,
+        pricePerUser,
+        users: selectedUserCount,
+        cycle: renewal,
+        profile: { ...profile, name: `${profile.firstName} ${profile.lastName}`.trim() },
+      });
       setPendingPaymentId(payment?._id || null);
       setPaymentOpen(true);
     } catch (err: any) { toast.error(err?.message || "Could not create payment"); }
@@ -117,9 +198,9 @@ export default function PaymentPage() {
           <div className="space-y-6">
             {/* Summary cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              <SummaryCard title="Plan" value={`${plan} · ₹${pricePerUser}/user`} />
-              <SummaryCard title="Cycle" value={renewal} />
-              <SummaryCard title="Member Limit" value={String(users)} extra={<span className="text-xs" style={{ color: BRAND }}>● {users} selected users</span>} />
+              <SummaryCard title="Paid Users" value={String(paidUsers)} extra={<span className="text-xs" style={{ color: BRAND }}>● {memberCount} active members</span>} />
+              <SummaryCard title="Cycle" value={cycleLabel} />
+              <SummaryCard title="Add Seats" value={String(purchaseUserCount)} extra={<span className="text-xs" style={{ color: BRAND }}>● {selectedUserCount} selected</span>} />
             </div>
 
             {/* Purchase plan */}
@@ -129,75 +210,117 @@ export default function PaymentPage() {
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-white text-xs font-semibold"
                 style={{ backgroundColor: "#e63946" }}
               >
-                PRICES PRORATED TILL : JUL 29, 2026 1:43 PM
+                PRICES PRORATED TILL : {proratedUntilLabel}
               </div>
 
               <div className="mt-6">
                 <p className="text-sm font-semibold mb-2">Choose Plan</p>
-                <div
-                  className="border-2 rounded-lg p-4 max-w-md relative"
-                  style={{ borderColor: BRAND }}
-                >
-                  <div className="absolute top-4 right-4 w-4 h-4 rounded-full" style={{ backgroundColor: BRAND }} />
-                  <div className="font-bold text-gray-900">{plan} Plan</div>
-                  <div className="text-sm text-gray-600 mb-2">₹{pricePerUser} per user / month</div>
-                  <ul className="text-xs text-gray-600 space-y-1 list-disc pl-4">
-                    <li>Android phone + SIM calling</li>
-                    <li>Works offline over cellular</li>
-                    <li>No cloud recordings</li>
-                  </ul>
+                <div className="grid sm:grid-cols-2 gap-4 max-w-2xl">
+                  {Object.entries(PLAN_PRICES).map(([planName, price]) => {
+                    const isSelected = plan === planName;
+                    return (
+                      <div
+                        key={planName}
+                        onClick={() => setPlan(planName)}
+                        className="border-2 rounded-lg p-4 relative cursor-pointer transition-colors"
+                        style={{ borderColor: isSelected ? BRAND : "#e5e7eb" }}
+                      >
+                        <div
+                          className="absolute top-4 right-4 w-4 h-4 rounded-full border"
+                          style={{
+                            backgroundColor: isSelected ? BRAND : "transparent",
+                            borderColor: isSelected ? BRAND : "#d1d5db",
+                          }}
+                        />
+                        <div className="font-bold text-gray-900">{planName}</div>
+                        <div className="text-sm text-gray-600 mb-2">₹{price} per user / month</div>
+                        <ul className="text-xs text-gray-600 space-y-1 list-disc pl-4">
+                          {planName === "Starter" ? (
+                            <>
+                              <li>Up to 5 agents</li>
+                              <li>Auto dialer</li>
+                              <li>Lead CRM</li>
+                              <li>Basic reports</li>
+                              <li>Email support</li>
+                            </>
+                          ) : (
+                            <>
+                              <li>Unlimited agents</li>
+                              <li>WhatsApp suite</li>
+                              <li>Pipeline & tasks</li>
+                              <li>Call recording</li>
+                              <li>Performance & attendance</li>
+                              <li>Priority support</li>
+                            </>
+                          )}
+                        </ul>
+                      </div>
+                    );
+                  })}
                 </div>
+                {hasPaidSubscription && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Currently active: <span className="font-semibold">{activePlanLabel}</span>
+                  </p>
+                )}
               </div>
 
               <div className="mt-6">
                 <p className="text-sm font-semibold mb-2">Choose Renewal</p>
                 <div className="flex flex-wrap gap-3 sm:gap-6 text-sm">
-                  {["monthly", "halfyearly", "yearly"].map((r) => (
+                  {(showTrialOption ? ["trial", ...renewalOptions] : renewalOptions).map((r) => (
                     <label key={r} className="flex items-center gap-2 capitalize cursor-pointer">
                       <input
                         type="radio"
                         checked={renewal === r}
                         onChange={() => setRenewal(r)}
                         style={{ accentColor: BRAND }}
+                        disabled={r === "trial" && !showTrialOption}
                       />
-                      {r === "halfyearly" ? "Halfyearly" : r}
+                      {r === "trial" ? "7-Day Trial · Active" : r === "halfyearly" ? "6 Months · 10% off" : r === "yearly" ? "Annual · 15% off" : "Monthly"}
                     </label>
                   ))}
                 </div>
               </div>
 
               <div className="mt-8 text-center">
-                <div className="text-3xl font-bold text-gray-900">₹{totalAmount.toLocaleString('en-IN')}<span className="text-sm text-gray-500"> total</span></div>
-                <div className="text-sm text-gray-500">₹{pricePerUser} × {users} users × {cycleMultiplier} month(s)</div>
+                <div className="text-3xl font-bold text-gray-900">{renewal === "trial" ? "FREE" : `₹${totalAmount.toLocaleString('en-IN')}`}<span className="text-sm text-gray-500"> {renewal === "trial" ? "for 7 days" : "total"}</span></div>
+                {discountAmount > 0 && <div className="mt-1 text-sm font-semibold text-emerald-600">Discount ({discountRate * 100}%)</div>}
+                <div className="text-sm text-gray-500">{renewal === "trial" ? "Up to 200 trial calls · 30 calls per telecaller per day" : `₹${pricePerUser} × ${purchaseUserCount} new user(s) × ${cycleMultiplier} month(s)`}</div>
 
                 <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
                   <span className="text-sm text-gray-600">Choose No of Users</span>
                   <div className="flex items-center gap-3">
                     <button
-                      onClick={() => setUsers(Math.max(1, users - 1))}
-                      className="w-8 h-8 rounded-full text-white flex items-center justify-center"
+                      onClick={() => setUsers((current) => Math.max(minimumUserCount, (Number(current) || minimumUserCount) - 1))}
+                      className="w-8 h-8 rounded-full text-white flex items-center justify-center disabled:opacity-50"
                       style={{ backgroundColor: BRAND }}
+                      disabled={selectedUserCount <= minimumUserCount}
                     >−</button>
                     <input
-                      value={users}
-                      onChange={(e) => setUsers(Number(e.target.value) || 1)}
+                      value={selectedUserCount}
+                      onChange={(e) => setUsers(Math.max(minimumUserCount, Number(e.target.value) || minimumUserCount))}
                       className="w-28 sm:w-40 text-center border rounded-md py-1.5"
                     />
                     <button
-                      onClick={() => setUsers(users + 1)}
+                      onClick={() => setUsers((current) => (Number(current) || minimumUserCount) + 1)}
                       className="w-8 h-8 rounded-full text-white flex items-center justify-center"
                       style={{ backgroundColor: BRAND }}
                     >+</button>
                   </div>
                 </div>
 
+                <div className="mt-3 text-xs text-gray-600">
+                  {plan === "Starter" ? `Starter seats: ${purchaseUserCount} additional seat(s) currently due` : `Additional paid users: ${purchaseUserCount} currently pending`}
+                </div>
+
                 <button
                   className="mt-6 px-10 py-2 rounded-md text-white text-sm font-semibold disabled:opacity-50"
                   style={{ backgroundColor: BRAND }}
                   onClick={() => void startPayment()}
-                  disabled={paying}
+                  disabled={paying || purchaseUserCount <= 0}
                 >
-                  {paying ? "Preparing..." : "PAY"}
+                  {paying ? "Preparing..." : purchaseUserCount <= 0 ? "No Payment Needed" : "PAY"}
                 </button>
               </div>
             </div>
@@ -223,7 +346,7 @@ export default function PaymentPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {invoices.map((inv, i) => (
+                    {paginatedInvoices.map((inv, i) => (
                       <tr key={inv._id || i} className="border-b last:border-0">
                         <td className="py-3">{inv.date}</td>
                         <td className="py-3">{inv.user}</td>
@@ -232,17 +355,23 @@ export default function PaymentPage() {
                         <td className="py-3">
                           <span
                             className="px-3 py-1 rounded-full text-xs text-white font-semibold"
-                            style={{ backgroundColor: inv.status === "Paid" ? "#a3d977" : "#ef4444" }}
+                            style={{ backgroundColor: inv.status === "Paid" ? "#a3d977" : inv.status === "Payment Failed" ? "#ef4444" : inv.status === "Processing" ? "#f59e0b" : "#64748b" }}
                           >
                             {inv.status}
                           </span>
                         </td>
                         <td className="py-3">
                           {inv.status === "Paid" && (
-                            <button className="bg-gray-800 text-white text-xs font-semibold px-4 py-1 rounded-full">Invoice</button>
+                            <button
+                              type="button"
+                              className="bg-gray-800 text-white text-xs font-semibold px-4 py-1 rounded-full"
+                              onClick={() => window.open("https://zohosecurepay.in/books/", "_blank", "noopener,noreferrer")}
+                            >
+                              Invoice
+                            </button>
                           )}
                         </td>
-                        <td />
+                        <td className="py-3">{inv.status === 'Paid' ? 'Approved' : inv.status === 'Payment Failed' ? 'Retry' : 'Pending'}</td>
                       </tr>
                     ))}
                     {loading && <tr><td colSpan={7} className="text-center p-4">Loading invoices...</td></tr>}
@@ -250,6 +379,16 @@ export default function PaymentPage() {
                   </tbody>
                 </table>
               </div>
+
+              {!loading && invoices.length > 0 && (
+                <div className="mt-4 flex items-center justify-center gap-2 text-sm">
+                  <button type="button" className="px-3 py-1 border rounded disabled:opacity-50" disabled={invoicePage === 1} onClick={() => setInvoicePage((page) => Math.max(1, page - 1))}>Previous</button>
+                  {Array.from({ length: totalInvoicePages }, (_, index) => index + 1).map((pageNumber) => (
+                    <button key={pageNumber} type="button" className={`px-2.5 py-1 border rounded ${pageNumber === invoicePage ? 'bg-gray-900 text-white' : ''}`} onClick={() => setInvoicePage(pageNumber)}>{pageNumber}</button>
+                  ))}
+                  <button type="button" className="px-3 py-1 border rounded disabled:opacity-50" disabled={invoicePage >= totalInvoicePages} onClick={() => setInvoicePage((page) => Math.min(totalInvoicePages, page + 1))}>Next</button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -299,7 +438,7 @@ export default function PaymentPage() {
           <img className="mx-auto size-56 rounded-lg border p-2" alt="UPI payment QR" src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(`upi://pay?pa=${PAYMENT_UPI_ID}&pn=WebDial&am=${totalAmount}&cu=INR`)}`} />
           <div className="rounded-lg bg-muted p-3 font-mono text-sm">{PAYMENT_UPI_ID}</div>
           <div className="text-lg font-bold">₹{totalAmount.toLocaleString('en-IN')}</div>
-          <DialogFooter><Button onClick={async () => { if (pendingPaymentId) await api.markPaymentPaid(pendingPaymentId); setPaymentOpen(false); toast.success("Payment marked as paid"); window.location.reload(); }}>I completed payment</Button></DialogFooter>
+          <DialogFooter><Button onClick={async () => { if (pendingPaymentId) await api.markPaymentProcessing(pendingPaymentId); setPaymentOpen(false); toast.success("Payment sent for approval"); window.location.reload(); }}>I completed payment</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

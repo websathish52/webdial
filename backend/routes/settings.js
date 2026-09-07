@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const settingsController = require('../controllers/settingsController');
 const { protect, attachCompany } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permission');
 const multer = require('multer');
 
 // Multer setup with error handling
@@ -21,6 +22,7 @@ const handleUpload = (fieldName) => (req, res, next) => {
 
 // All settings routes are protected and require a resolved company context
 router.use(protect);
+router.use(requirePermission('settings'));
 router.use(attachCompany);
 
 // General Company Info
@@ -44,6 +46,14 @@ router.put('/unique-contacts', settingsController.updateUniqueContactsSetting);
 // Default Dialer
 router.get('/dialer', settingsController.getDialerSettings);
 router.put('/dialer', settingsController.updateDialerSettings);
+
+// WhatsApp automation
+router.get('/whatsapp-automation', settingsController.getWhatsappAutomation);
+router.put('/whatsapp-automation', settingsController.updateWhatsappAutomation);
+router.get('/whatsapp', settingsController.getWhatsappSettings);
+router.put('/whatsapp', settingsController.updateWhatsappSettings);
+router.get('/whatsapp/credits', settingsController.getWhatsappCredits);
+router.post('/whatsapp/credits/recharge', settingsController.requestWhatsappCredits);
 
 // Custom Statuses
 router.get('/custom-statuses', settingsController.getCustomStatuses);

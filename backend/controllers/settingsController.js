@@ -1,6 +1,8 @@
 const CompanySettings = require('../models/CompanySettings');
 const Upload = require('../models/Upload');
 const User = require('../models/User');
+const Integration = require('../models/Integration');
+const WhatsappCreditTransaction = require('../models/WhatsappCreditTransaction');
 const fs = require('fs');
 const path = require('path');
 const { assertStorageAvailable, syncStorageUsage } = require('../utils/storageLimit');
@@ -299,6 +301,90 @@ exports.updateDialerSettings = async (req, res) => {
   }
 };
 
+exports.getWhatsappAutomation = async (req, res) => {
+  try {
+    if (isOwnContext(req)) return requireCompanySelectedResponse(res);
+    const settings = await getOrCreateSettings(req.companyId);
+    res.json(settings.whatsappAutomation || {});
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.updateWhatsappAutomation = async (req, res) => {
+  try {
+    if (isOwnContext(req)) return requireCompanySelectedResponse(res);
+    const settings = await getOrCreateSettings(req.companyId);
+    const allowed = ['enabled', 'autoReply', 'welcomeFlow', 'missedCallTrigger'];
+    for (const field of allowed) {
+      if (typeof req.body[field] === 'boolean') settings.whatsappAutomation[field] = req.body[field];
+    }
+    await settings.save();
+    res.json(settings.whatsappAutomation);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getWhatsappSettings = async (req, res) => {
+  try {
+    if (isOwnContext(req)) return requireCompanySelectedResponse(res);
+    const settings = await getOrCreateSettings(req.companyId);
+    const integration = await Integration.findOne({ companyId: req.companyId, provider: 'facebook-lead-ads' }).lean();
+    res.json({
+      account: settings.whatsappAccount || {},
+      automation: settings.whatsappAutomation || {},
+      integration: integration ? {
+        provider: integration.provider,
+        name: integration.name,
+        description: integration.description,
+        connected: integration.connected,
+      } : null,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.updateWhatsappSettings = async (req, res) => {
+  try {
+    if (isOwnContext(req)) return requireCompanySelectedResponse(res);
+    const settings = await getOrCreateSettings(req.companyId);
+    const account = req.body?.account || {};
+    for (const field of ['businessName', 'phoneNumber', 'businessId']) {
+      if (typeof account[field] === 'string') settings.whatsappAccount[field] = account[field].trim();
+    }
+    const automation = req.body?.automation || {};
+    for (const field of ['enabled', 'autoReply', 'welcomeFlow', 'missedCallTrigger']) {
+      if (typeof automation[field] === 'boolean') settings.whatsappAutomation[field] = automation[field];
+    }
+    await settings.save();
+    res.json({ account: settings.whatsappAccount, automation: settings.whatsappAutomation });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getWhatsappCredits = async (req, res) => {
+  try {
+    if (isOwnContext(req)) return requireCompanySelectedResponse(res);
+    const settings = await getOrCreateSettings(req.companyId);
+    const transactions = await WhatsappCreditTransaction.find({ companyId: req.companyId }).sort({ createdAt: -1 }).limit(10).lean();
+    res.json({ balance: settings.whatsappCredits?.balance ?? 100, transactions });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
+exports.requestWhatsappCredits = async (req, res) => {
+  try {
+    if (isOwnContext(req)) return requireCompanySelectedResponse(res);
+    const credits = Number(req.body?.credits);
+    const amount = Number(req.body?.amount);
+    if (!Number.isInteger(credits) || credits < 1 || !Number.isFinite(amount) || amount < 0) return res.status(400).json({ message: 'Valid credits and amount are required' });
+    const transaction = await WhatsappCreditTransaction.create({ companyId: req.companyId, credits, amount, requestedBy: req.user._id });
+    res.status(201).json(transaction);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
 // --- Message Templates ---
 exports.getMessageTemplates = async (req, res) => {
   try {
@@ -355,7 +441,7 @@ const DEFAULT_DISPOSITION_STATUSES = [
   ['interested', 'Interested', '#eab308'],
   ['not_interested', 'Not Interested', '#6b7280'],
   ['callback', 'Callback', '#f59e0b'],
-  ['converted', 'Converted', '#059669'],
+  ['converted', 'Converted', '#2563eb'],
   ['no_answer', 'Ringing / No Response', '#ef4444'],
   ['busy', 'Busy', '#92400e'],
   ['wrong_number', 'Wrong Number', '#111827'],

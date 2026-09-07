@@ -1,39 +1,196 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Users, MessageCircle, BarChart3, Wrench, Megaphone, Lock, CreditCard, Plug, Mic, Settings as SettingsIcon, LogOut, PhoneCall, TrendingUp, FileClock, Kanban, ClipboardCheck, X, ChevronDown } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  MessageCircle,
+  MessageSquare,
+  MessageCircleMore,
+  CalendarCheck,
+  Gauge,
+  FileText,
+  FileBarChart,
+  SlidersHorizontal,
+  ListChecks,
+  Package,
+  Radio,
+  Workflow,
+  BarChart3,
+  Wrench,
+  Megaphone,
+  Lock,
+  CreditCard,
+  Plug,
+  Mic,
+  Settings as SettingsIcon,
+  KeyRound,
+  LogOut,
+  PhoneCall,
+  TrendingUp,
+  FileClock,
+  Kanban,
+  ClipboardCheck,
+  X,
+  ChevronDown,
+  Building2,
+  Server,
+  ShieldCheck,
+  Bell,
+  LifeBuoy,
+  Rocket,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { store, useCurrentMember, type Permissions } from "@/lib/mock-store";
 import api, { getSelectedCompanyId, setSelectedCompanyId, resolveFileUrl } from "@/lib/api";
 import webdialLogo from "@/assets/webdial-jpg.png";
 
-type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; beta?: boolean; perm?: keyof Permissions };
+type NavLeaf = { to: string; label: string; icon: LucideIcon; beta?: boolean; perm?: keyof Permissions; badge?: string };
+type NavGroup = { label: string; icon: LucideIcon; beta?: boolean; perm?: keyof Permissions; items: NavLeaf[] };
+type NavItem = NavLeaf | NavGroup;
+
 const telecallerNav: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/crm", label: "CRM", icon: Users, perm: "crm" },
   { to: "/dialer", label: "Auto Dialer", icon: PhoneCall, perm: "crm" },
-  { to: "/whatsapp", label: "Whatsapp", icon: MessageCircle, beta: true, perm: "whatsapp" },
-  { to: "/reports", label: "Reports and Analytics", icon: BarChart3, perm: "reports" },
-  { to: "/performance", label: "Performance", icon: TrendingUp, perm: "reports" },
-  { to: "/audit", label: "Audit Logs", icon: FileClock, perm: "reports" },
-  { to: "/tools", label: "Tools", icon: Wrench, perm: "tools" },
-  { to: "/pipeline", label: "Pipeline", icon: Kanban, perm: "tools" },
-  { to: "/tasks", label: "Tasks", icon: ClipboardCheck, perm: "tools" },
+  {
+    label: "Whatsapp",
+    icon: MessageCircle,
+    beta: true,
+    perm: "whatsapp",
+    items: [
+      { to: "/whatsapp", label: "Inbox", icon: MessageSquare, perm: "whatsapp" },
+      { to: "/whatsapp-templates", label: "Templates", icon: FileText, perm: "whatsapp" },
+      { to: "/whatsapp-automation", label: "Automation", icon: MessageCircleMore, perm: "whatsapp" },
+      { to: "/broadcast", label: "Broadcast", icon: Megaphone, perm: "whatsapp" },
+      { to: "/whatsapp-reports", label: "Reports", icon: BarChart3, perm: "whatsapp" },
+      { to: "/whatsapp-settings", label: "Settings", icon: SlidersHorizontal, perm: "whatsapp" },
+    ],
+  },
+  {
+    label: "Reports and Analytics",
+    icon: BarChart3,
+    perm: "reports",
+      items: [
+      { to: "/reports", label: "Master", icon: BarChart3, perm: "reports" },
+      { to: "/summary", label: "Summary", icon: FileBarChart, perm: "reports" },
+      { to: "/disposition-report", label: "Disposition", icon: ListChecks, perm: "reports" },
+      { to: "/productivity", label: "Productivity", icon: TrendingUp, perm: "reports" },
+      { to: "/game", label: "Leaderboard", icon: CalendarCheck, perm: "reports" },
+      { to: "/productivity-attendance", label: "Attendance", icon: FileClock, perm: "reports" },
+      { to: "/performance", label: "Performance", icon: Gauge, perm: "reports" },
+      { to: "/audit", label: "Audit", icon: ClipboardCheck, perm: "reports" },
+    ],
+  },
+  {
+    label: "Tools",
+    icon: Wrench,
+    perm: "tools",
+    items: [
+      { to: "/automation", label: "Automation", icon: Workflow, perm: "tools" },
+      { to: "/pipeline", label: "Pipeline", icon: Kanban, perm: "tools" },
+      { to: "/tasks", label: "Tasks", icon: ListChecks, perm: "tools" },
+      { to: "/form", label: "Forms", icon: FileText, perm: "tools" },
+      { to: "/products", label: "Products", icon: Package, perm: "tools" },
+      { to: "/webdialer", label: "Web Dialer", icon: Radio, perm: "tools" },
+    ],
+  },
+  {
+    label: "Marketing",
+    icon: Megaphone,
+    perm: "marketing",
+    items: [
+      { to: "/marketing", label: "Marketing", icon: Megaphone, perm: "marketing" },
+      { to: "/gopages", label: "Go Pages", icon: Rocket, perm: "marketing" },
+      { to: "/web_form", label: "Web Form", icon: FileText, perm: "marketing" },
+      { to: "/voice-broadcast", label: "Voice Broadcast", icon: Mic, perm: "marketing" },
+    ],
+  },
   { to: "/settings", label: "Settings", icon: SettingsIcon, perm: "settings" },
-  { to: "/payment", label: "Subscribes", icon: CreditCard, perm: "payment" },
+  { to: "/payment", label: "Subscribe", icon: CreditCard, perm: "payment" },
+  { to: "/support", label: "Support", icon: LifeBuoy },
 ];
+
 const superAdminNav: NavItem[] = [
-  ...telecallerNav.filter(item => item.to !== '/dialer' && item.to !== '/payment'),
-  { to: "/payment", label: "Payment", icon: CreditCard, perm: "payment" },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/crm", label: "CRM", icon: Users, perm: "crm" },
   { to: "/team", label: "Team & Members", icon: Users, perm: "team" },
-  { to: "/marketing", label: "Marketing", icon: Megaphone, perm: "marketing" },
-  { to: "/pbx", label: "Web PBX", icon: Lock, beta: true, perm: "pbx" },
-  { to: "/subscribe", label: "Subscribe", icon: CreditCard, perm: "subscribe" },
+  {
+    label: "Whatsapp",
+    icon: MessageCircle,
+    beta: true,
+    perm: "whatsapp",
+    items: [
+      { to: "/whatsapp", label: "Inbox", icon: MessageSquare, perm: "whatsapp" },
+      { to: "/whatsapp-templates", label: "Templates", icon: FileText, perm: "whatsapp" },
+      { to: "/whatsapp-automation", label: "Automation", icon: MessageCircleMore, perm: "whatsapp" },
+      { to: "/broadcast", label: "Broadcast", icon: Megaphone, perm: "whatsapp" },
+      { to: "/whatsapp-reports", label: "Reports", icon: BarChart3, perm: "whatsapp" },
+      { to: "/whatsapp-settings", label: "Settings", icon: SlidersHorizontal, perm: "whatsapp" },
+    ],
+  },
+  {
+    label: "Reports and Analytics",
+    icon: BarChart3,
+    perm: "reports",
+    items: [
+      { to: "/reports", label: "Master", icon: BarChart3, perm: "reports" },
+      { to: "/summary", label: "Summary", icon: FileBarChart, perm: "reports" },
+      { to: "/disposition-report", label: "Disposition", icon: ListChecks, perm: "reports" },
+      { to: "/productivity", label: "Productivity", icon: TrendingUp, perm: "reports" },
+      { to: "/game", label: "Leaderboard", icon: CalendarCheck, perm: "reports" },
+      { to: "/productivity-attendance", label: "Attendance", icon: FileClock, perm: "reports" },
+      { to: "/performance", label: "Performance", icon: Gauge, perm: "reports" },
+      { to: "/audit", label: "Audit", icon: ClipboardCheck, perm: "reports" },
+    ],
+  },
+  {
+    label: "Tools",
+    icon: Wrench,
+    perm: "tools",
+    items: [
+      { to: "/automation", label: "Automation", icon: Workflow, perm: "tools" },
+      { to: "/pipeline", label: "Pipeline", icon: Kanban, perm: "tools" },
+      { to: "/tasks", label: "Tasks", icon: ListChecks, perm: "tools" },
+      { to: "/form", label: "Forms", icon: FileText, perm: "tools" },
+      { to: "/products", label: "Products", icon: Package, perm: "tools" },
+      { to: "/webdialer", label: "Web Dialer", icon: Radio, perm: "tools" },
+    ],
+  },
+  {
+    label: "Marketing",
+    icon: Megaphone,
+    perm: "marketing",
+    items: [
+      { to: "/marketing", label: "Campaigns", icon: Megaphone, perm: "marketing" },
+      { to: "/gopages", label: "Go Pages", icon: Rocket, perm: "marketing" },
+      { to: "/web_form", label: "Web Form", icon: FileText, perm: "marketing" },
+      { to: "/voice-broadcast", label: "Voice Broadcast", icon: Mic, perm: "marketing" },
+    ],
+  },
+  { to: "/pbx", label: "webdial PBX", icon: Lock, beta: true, perm: "pbx" },
+  { to: "/payment", label: "Subscribe", icon: CreditCard, perm: "payment" },
   { to: "/integration", label: "Integration", icon: Plug, perm: "integration" },
   { to: "/recording", label: "Recording", icon: Mic, beta: true, perm: "recording" },
+  { to: "/settings", label: "Settings", icon: SettingsIcon, perm: "settings" },
+  { to: "/support", label: "Support", icon: LifeBuoy },
 ];
 
 const masterNav: NavItem[] = [
-  { to: "/master", label: "Master", icon: Lock },
+  { to: "/master/dashboard", label: "Overview", icon: LayoutDashboard },
+  { to: "/master/master", label: "Subscribe Payment Approval", icon: Lock },
+  { to: "/master/tenants", label: "Tenants / Companies", icon: Building2, badge: "128" },
+  { to: "/master/users", label: "Users & Roles", icon: Users },
+  { to: "/master/calls", label: "Call Monitor", icon: PhoneCall, badge: "LIVE" },
+  { to: "/master/analytics", label: "Global Analytics", icon: BarChart3 },
+  { to: "/master/billing", label: "Billing & Plans", icon: CreditCard },
+  { to: "/master/telephony", label: "Telephony / Trunks", icon: Server },
+  { to: "/master/compliance", label: "Compliance & Audit", icon: ShieldCheck },
+  { to: "/master/alerts", label: "Alerts", icon: Bell, badge: "3" },
+  { to: "/master/support", label: "Support Tickets", icon: LifeBuoy, badge: "12" },
+  { to: "/master/settings", label: "Platform Settings", icon: SettingsIcon },
+  { to: "/master/portal-access", label: "Portal Access", icon: KeyRound, badge: "NEW" },
+  { to: "/master/module-access", label: "Module Access", icon: SlidersHorizontal },
 ];
 
 // Clears everything tied to auth AND to the currently-selected tenant/company.
@@ -59,6 +216,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
   const [companies, setCompanies] = useState<Array<{ _id: string; companyName: string; companyCode?: string }>>([]);
   const [companyLoading, setCompanyLoading] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
   // FIX: resolveFileUrl("") on an empty/unset logoUrl still returns a
   // truthy string (just API_BASE), so the old `logoUrl ? <img> : <fallback>`
   // check rendered a broken <img> pointing at a non-existent file and the
@@ -169,11 +327,23 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
 
 if (!member) return null;
   const nav = member.role === "Master" ? masterNav : member.role === "SuperAdmin" ? superAdminNav : telecallerNav;
-  const visibleNav = member.role === "Master" ? nav : nav.filter(n => !n.perm || member.permissions[n.perm] || member.role === "SuperAdmin");
+
+  const isNavItemVisible = (item: NavItem) => {
+    if ("items" in item) {
+      return item.items.some((child) => !child.perm || member.permissions[child.perm] || member.role === "SuperAdmin");
+    }
+    return !item.perm || member.permissions[item.perm] || member.role === "SuperAdmin";
+  };
+
+  const visibleNav = member.role === "Master" ? nav : nav.filter(isNavItemVisible);
+  const isActivePath = (to: string) => pathname === to || pathname.startsWith(to + "/");
+  const toggleGroup = (label: string) => {
+    setOpenGroup((current) => current === label ? null : label);
+  };
 
   return (
-    <div className="h-full w-full flex flex-col bg-sidebar text-sidebar-foreground select-none">
-      <div className="px-5 py-5 flex flex-col gap-4">
+    <div className="flex h-full w-full min-w-0 flex-col bg-sidebar text-sidebar-foreground select-none">
+      <div className="flex flex-col gap-4 px-5 py-5">
         <div className="flex items-start justify-between">
           <div>
             <div className="text-sm text-muted-foreground">Hello!</div>
@@ -242,24 +412,79 @@ if (!member) return null;
         )}
       </div>
 
-      <nav className="flex-1 px-2 py-2 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-2">
         {visibleNav.map((item) => {
-          const active = pathname === item.to || pathname.startsWith(item.to + "/");
+          if ("items" in item) {
+            const groupActive = item.items.some((child) => isActivePath(child.to));
+            const isOpen = openGroup === item.label;
+
+            return (
+              <div key={item.label} className="rounded-lg border border-transparent">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(item.label)}
+                  className={cn(
+                    "flex w-full min-w-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                    groupActive
+                      ? "bg-[rgb(231,239,254)] text-[#2563EB] font-medium"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50"
+                  )}
+                >
+                  <item.icon className="size-4 shrink-0" />
+                  <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
+                  {item.beta && (
+                    <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0", groupActive ? "bg-white/20" : "bg-primary/15")} style={{color:"#16a34a", backgroundColor: "#16a34a29"}}>BETA</span>
+                  )}
+                  <ChevronDown className={cn("size-4 shrink-0 transition-transform", isOpen ? "rotate-180" : "rotate-0")} />
+                </button>
+
+                <div className={cn("mt-1 space-y-1 pl-2", isOpen ? "block" : "hidden")}>
+                  {item.items.map((child) => {
+                    const active = isActivePath(child.to);
+                    return (
+                      <Link
+                        key={child.to}
+                        to={child.to}
+                        onClick={() => {
+                          window.dispatchEvent(new CustomEvent("ifox-navigation-loading"));
+                          onClose?.();
+                        }}
+                        className={cn(
+                          "flex min-w-0 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                          active
+                            ? "bg-[rgb(231,239,254)] text-[#2563EB] font-medium"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50"
+                        )}
+                      >
+                        <child.icon className="size-4 shrink-0" />
+                        <span className="min-w-0 flex-1 truncate">{child.label}</span>
+                        {child.beta && (
+                          <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0", active ? "bg-white/20" : "bg-primary/15")} style={{color:"#16a34a", backgroundColor: "#16a34a29"}}>BETA</span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          }
+
+          const active = isActivePath(item.to);
           return (
-          <Link key={item.to} to={item.to} onClick={() => {
-            window.dispatchEvent(new CustomEvent("ifox-navigation-loading"));
-            onClose?.();
-          }}
-  className={cn(
-    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
-    active
-      ? "bg-[rgb(231,239,254)] text-[#2563EB] font-medium"
-      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50"
-  )}
->
+            <Link key={item.to} to={item.to} onClick={() => {
+              window.dispatchEvent(new CustomEvent("ifox-navigation-loading"));
+              onClose?.();
+            }}
+            className={cn(
+              "flex min-w-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+              active
+                ? "bg-[rgb(231,239,254)] text-[#2563EB] font-medium"
+                : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50"
+            )}
+          >
               <item.icon className="size-4 shrink-0" />
-              <span className="flex-1 truncate">{item.label}</span>
-              {item.to === "/tasks" && notificationCount > 0 && (
+              <span className="min-w-0 flex-1 truncate">{item.label}</span>
+              {(item.to === "/tasks" || item.to === "/master/master" || item.to === "/master/alerts") && notificationCount > 0 && (
                 <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-semibold text-white shrink-0">
                   {notificationCount > 9 ? "9+" : notificationCount}
                 </span>
@@ -283,3 +508,4 @@ if (!member) return null;
     </div>
   );
 }
+

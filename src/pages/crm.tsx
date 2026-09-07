@@ -15,6 +15,13 @@ import { useDispositionColors } from "@/lib/use-disposition-colors";
 
 const ALL_LEADS = "All Leads";
 
+function getCrmListStorageKey(member: any) {
+  if (!member) return "";
+  const userKey = member._id || member.id || member.username || member.email || "current";
+  const companyKey = localStorage.getItem("ifox_selected_company") || member.companyId?._id || member.companyId || "current";
+  return `ifox_crm_selected_list_${String(companyKey)}_${String(userKey)}`;
+}
+
 type ListItem = { _id?: string; id?: string; name: string; description?: string; assignedTo?: any[]; leadsCount?: number };
 
 type LeadRecord = { _id?: string; id?: string; name: string; phone: string; email?: string; disposition: Disposition; list: string; totalDuration: number; createdAt?: string; lastCalledAt?: string; companyId?: string | { _id?: string; id?: string }; };
@@ -184,6 +191,18 @@ function CRM() {
     window.addEventListener('ifox-call-logged', handleCallLogged);
     return () => window.removeEventListener('ifox-call-logged', handleCallLogged);
   }, [member]);
+
+  useEffect(() => {
+    const storageKey = getCrmListStorageKey(member);
+    if (!storageKey) return;
+    const savedList = localStorage.getItem(storageKey);
+    if (savedList) setSelectedList(savedList);
+  }, [member]);
+
+  useEffect(() => {
+    const storageKey = getCrmListStorageKey(member);
+    if (storageKey && selectedList) localStorage.setItem(storageKey, selectedList);
+  }, [member, selectedList]);
 
   if (!member) return null;
 
@@ -450,14 +469,15 @@ function CRM() {
         </Link>
       </div>
 
-      <div className="bg-white border rounded-2xl p-6 shadow-sm">
+      <div className="bg-white border rounded-2xl p-4 sm:p-4 shadow-sm min-[1025px]:h-[260px] overflow-hidden">
         <h3 className="text-lg font-semibold mb-6">{isAdmin ? 'Team Analytics' : 'My Analytics'}</h3>
 
-        <div className="grid lg:grid-cols-3 gap-8 items-center">
+        <div className="grid lg:grid-cols-3 gap-4 sm:gap-8 items-center min-[1025px]:h-[180px]">
 
           {/* Disposition Pie */}
-          <div className="flex flex-col items-center">
-            <ResponsiveContainer width="100%" height={220}>
+          <div className="flex flex-col items-center min-[1025px]:h-full min-[1025px]:justify-center">
+            <div className="h-[180px] w-full sm:h-[200px] min-[1025px]:h-[140px]">
+            <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={myDispoData}
                   dataKey="value"
@@ -472,16 +492,17 @@ function CRM() {
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
+            </div>
 
-            <p className="text-sm font-semibold mt-2">
+            <p className="text-sm font-semibold mt-3">
               {isAllLeadsView ? 'Dispositions (All Leads)' : 'Dispositions (This List)'}
             </p>
           </div>
 
           {/* New / Called */}
-          <div className="flex flex-col items-center">
-            <div className="relative w-40 h-40">
-              <ResponsiveContainer width="100%" height="100%">
+          <div className="flex flex-col items-center min-[1025px]:h-full min-[1025px]:justify-center">
+            <div className="relative w-40 h-40 mt-5 min-[1025px]:mt-0 min-[1025px]:size-32">
+              <ResponsiveContainer width="100%" height="100%" >
                 <PieChart>
                   <Pie
                     data={[
@@ -501,27 +522,31 @@ function CRM() {
                 </PieChart>
               </ResponsiveContainer>
 
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-2xl font-bold">
-                  {doneCount}
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  / {totalInList}
-                </span>
+              <div className="absolute inset-0 flex flex-col items-center  justify-center">
+             
+<span
+  className="text-md  text-muted-foreground"
+  style={{ fontWeight: 900 }}
+>
+  {doneCount}
+</span>                  <hr className="my-0 w-8 border-0 border-t border-secondary/50" role="separator" aria-orientation="horizontal" />
+                  <span className="text-md font-bold text-muted-foreground">{totalInList}</span>
+               
               </div>
             </div>
 
-            <p className="text-sm font-semibold mt-2">
+            <p className="text-sm font-semibold mt-3  min-[1025px]:pt-0">
               {/* ⭐ FIX: label always "My Progress" now — it's still the same team-wide count,
                   just phrased from the agent's point of view. Change back to conditional if
                   you want admins to see a different label. */}
-              My Progress
+              New / Called
             </p>
           </div>
 
           {/* Daily Calls */}
-          <div className="flex flex-col items-center">
-            <ResponsiveContainer width="100%" height={220}>
+          <div className="flex flex-col items-center min-[1025px]:h-full min-[1025px]:justify-center">
+            <div className="h-[180px] w-full sm:h-[200px] min-[1025px]:h-[140px]">
+            <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dailyData}>
                 <XAxis dataKey="day" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} />
@@ -533,6 +558,7 @@ function CRM() {
                 />
               </BarChart>
             </ResponsiveContainer>
+            </div>
 
             <p className="text-sm font-semibold mt-2">
               {isAdmin ? 'Daily Calls (Team)' : 'My Daily Calls'}

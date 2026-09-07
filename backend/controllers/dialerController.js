@@ -2,7 +2,12 @@ const CallLog = require('../models/CallLog');
 const Lead = require('../models/Lead');
 const Recording = require('../models/Recording');
 const User = require('../models/User');
+const Company = require('../models/Company');
+const Subscription = require('../models/Subscription');
 const { buildTenantFilter, buildTenantFilterAsync, requireCompanyId } = require('../middleware/tenant');
+
+const TRIAL_TOTAL_CALL_LIMIT = 200;
+const TRIAL_DAILY_CALL_LIMIT = 30;
 
 // Log a call
 exports.logCall = async (req, res) => {
@@ -11,6 +16,26 @@ exports.logCall = async (req, res) => {
     if (!leadId || !phone || !name) return res.status(400).json({ message: 'Missing required fields' });
 
     const companyId = requireCompanyId(req);
+    let trialUsage = null;
+    const company = await Company.findById(companyId).select('subscriptionId').lean();
+    const subscription = await Subscription.findOne({ _id: company?.subscriptionId })
+      .select('type status expiryDate')
+      .lean();
+    if (subscription?.type === 'FREE_TRIAL' && subscription.status === 'ACTIVE' && subscription.expiryDate > new Date()) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const [totalCalls, dailyCalls] = await Promise.all([
+        CallLog.countDocuments({ companyId, agent: req.user._id }),
+        CallLog.countDocuments({ companyId, agent: req.user._id, calledAt: { $gte: today } }),
+      ]);
+      if (totalCalls >= TRIAL_TOTAL_CALL_LIMIT) {
+        return res.status(429).json({ code: 'TRIAL_CALL_LIMIT_REACHED', message: `Your 7-day trial includes up to ${TRIAL_TOTAL_CALL_LIMIT} calls per telecaller. Please subscribe to continue calling.` });
+      }
+      if (dailyCalls >= TRIAL_DAILY_CALL_LIMIT) {
+        return res.status(429).json({ code: 'TRIAL_DAILY_CALL_LIMIT_REACHED', message: `Each telecaller is restricted to ${TRIAL_DAILY_CALL_LIMIT} calls per day during the trial. Please try again tomorrow or subscribe for unlimited access.` });
+      }
+      trialUsage = { totalCalls: totalCalls + 1, dailyCalls: dailyCalls + 1, totalLimit: TRIAL_TOTAL_CALL_LIMIT, dailyLimit: TRIAL_DAILY_CALL_LIMIT };
+    }
     const callLog = new CallLog({
       companyId,
       leadId,
@@ -48,7 +73,7 @@ exports.logCall = async (req, res) => {
       }
     }
 
-    res.status(201).json({ callLog, lead });
+    res.status(201).json({ callLog, lead, trialUsage });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

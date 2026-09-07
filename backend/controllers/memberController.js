@@ -15,7 +15,8 @@ exports.getMembers = async (req, res) => {
 
     let members = await User.find(filter).select('-password');
 
-    if (isSuperAdmin(req)) {
+    const selectedCompanyId = req.headers['x-company-id'] || req.headers['X-Company-Id'];
+    if (isSuperAdmin(req) && !selectedCompanyId) {
       const alreadyIncluded = members.some((m) => String(m._id) === String(req.user._id));
       if (!alreadyIncluded) {
         const self = await User.findById(req.user._id).select('-password');
@@ -67,7 +68,21 @@ exports.updateMember = async (req, res) => {
     if (name) member.name = name;
     if (email) member.email = email.toLowerCase();
     if (phone !== undefined) member.phone = phone;
-    if (role) member.role = role;
+    if (role !== undefined) {
+      const nextRole = String(role).toLowerCase();
+      const requesterRole = String(req.user.role || '').toLowerCase();
+      const validRoles = ['superadmin', 'admin', 'manager', 'submanager', 'telecaller'];
+      if (!validRoles.includes(nextRole)) {
+        return res.status(400).json({ message: 'Invalid member role' });
+      }
+      if (String(req.params.id) === String(req.user._id)) {
+        return res.status(403).json({ message: 'You cannot change your own role' });
+      }
+      if (!['master', 'superadmin'].includes(requesterRole)) {
+        return res.status(403).json({ message: 'Only SuperAdmin can change member roles' });
+      }
+      member.role = nextRole;
+    }
     if (username !== undefined) member.username = username;
     if (lists !== undefined) member.lists = lists;
     if (teams !== undefined) member.teams = teams;

@@ -336,6 +336,24 @@ function TeamPage() {
 
       let successCount = 0;
       let failCount = 0;
+      const targetCompanyId = isSuperAdmin ? selectedCompanyId : me?.companyId;
+      if (!targetCompanyId) {
+        toast.error("Select a company before importing members");
+        return;
+      }
+      const subscription = await api.getCurrentSubscription().catch(() => null);
+      const subscriptionPlan = String(subscription?.plan || "STARTED").toUpperCase();
+      const seatLimit = subscriptionPlan === "PRO"
+        ? Number(subscription?.numberOfUsers || 0)
+        : Math.min(5, Number(subscription?.numberOfUsers || 5));
+      const currentMembers = Array.isArray(await api.getMembers().catch(() => []))
+        ? (await api.getMembers().catch(() => [])).filter((user: any) => String(user.companyId || user.company_id || "") === String(targetCompanyId)).length
+        : 0;
+      const pendingAdds = lines.slice(1).length;
+      if (seatLimit > 0 && currentMembers + pendingAdds > seatLimit) {
+        toast.error("No available paid user seat. Purchase / Upgrade User to continue.");
+        return;
+      }
       for (const line of lines.slice(1)) {
         const cols = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
         const name = cols[nameIdx];
@@ -587,7 +605,7 @@ function TeamPage() {
             isMeSuperAdminCard || m.flags?.allowAllListAccess
               ? lists
               : assignedAndExistingLists;
-          
+
           let companiesToDisplay: Array<{ _id: string; companyName: string }> = [];
 
           if (isMeSuperAdminCard) {
@@ -852,7 +870,7 @@ function TeamPage() {
             )}
           </div>
         </div>
-      
+
 {canManageMembers && (
   <Button
     className="bg-blue-600 hover:bg-blue-700 text-white rounded font-medium gap-1.5 self-end sm:self-center uppercase text-xs tracking-wider px-4 py-2"
@@ -1094,7 +1112,7 @@ function MemberDialog({
     if (!name || !email || (!password && !member)) return toast.error("Name, email & password required");
     const backendRole = role === "SuperAdmin" ? "superadmin" : role === "Admin" ? "admin" : role === "Manager" ? "manager" : role === "Submanager" ? "submanager" : role === "Telecaller" ? "telecaller" : "admin";
     const userId = (username || email.split("@")[0]).trim();
-    try { 
+    try {
       if (member) {
         const memberId = member._id || member.id || "";
         await api.updateMember(memberId, {
@@ -1112,6 +1130,23 @@ function MemberDialog({
         if (password) await api.updateMemberPassword(memberId, password);
         toast.success("Member updated");
       } else {
+        const targetCompanyId = isSuperAdmin ? companyId : me?.companyId;
+        if (!targetCompanyId) {
+          toast.error("Select a company before creating a member");
+          return;
+        }
+        const subscription = await api.getCurrentSubscription().catch(() => null);
+        const subscriptionPlan = String(subscription?.plan || "STARTED").toUpperCase();
+        const seatLimit = subscriptionPlan === "PRO"
+          ? Number(subscription?.numberOfUsers || 0)
+          : Math.min(5, Number(subscription?.numberOfUsers || 5));
+        const currentMembers = Array.isArray(await api.getMembers().catch(() => []))
+          ? (await api.getMembers().catch(() => [])).filter((user: any) => String(user.companyId || user.company_id || "") === String(targetCompanyId)).length
+          : 0;
+        if (seatLimit > 0 && currentMembers + 1 > seatLimit) {
+          toast.error("No available paid user seat. Purchase / Upgrade User to continue.");
+          return;
+        }
         const created: any = await api.registerUser(name, email, password, backendRole, userId, phone, companyId || undefined);
         let newId = created?._id || created?.id || created?.user?._id || created?.user?.id;
         if (!newId) {
@@ -1335,7 +1370,7 @@ function CompanyManageDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl p-0 overflow-hidden bg-white">
+      <DialogContent className="w-full max-w-[calc(100vw-2rem)] sm:max-w-5xl p-0 overflow-hidden bg-white">
         <div className="border-b p-4 flex items-center gap-3">
           <button onClick={onClose} className="text-gray-500 hover:text-gray-800">
             <ArrowLeft className="size-5" />
@@ -1434,7 +1469,7 @@ function TeamManageDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl p-0 overflow-hidden bg-white">
+      <DialogContent className="w-full max-w-[calc(100vw-2rem)] sm:max-w-5xl p-0 overflow-hidden bg-white">
         <div className="border-b p-4 flex items-center gap-3">
           <button onClick={onClose} className="text-gray-500 hover:text-gray-800">
             <ArrowLeft className="size-5" />
@@ -1577,7 +1612,7 @@ function AddCompanyDialog({
   return (
     <>
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden bg-white">
+      <DialogContent className="w-full max-w-[calc(100vw-2rem)] sm:max-w-2xl p-0 overflow-hidden bg-white">
         <div className="bg-[linear-gradient(135deg,#1D4ED8_0%,#2563EB_50%,#60A5FA_100%)] text-white p-4 flex items-center justify-between">
           <DialogHeader>
             <DialogTitle className="text-white">Company Management</DialogTitle>

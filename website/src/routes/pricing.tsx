@@ -1,8 +1,8 @@
-import { Link } from "react-router-dom";
 import { Check } from "lucide-react";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { Button } from "@/components/ui/button";
+import { TrialDialog } from "@/components/site/TrialDialog";
 import {
   Accordion,
   AccordionContent,
@@ -89,9 +89,7 @@ export default function Pricing() {
                     </li>
                   ))}
                 </ul>
-                <Button asChild variant={p.highlight ? "hero" : "outlineGlow"} className="zoom-glow mt-8 w-full">
-                  <Link to="/contact">Start free trial</Link>
-                </Button>
+                <TrialDialog plan={p.name === "Pro" ? "PRO" : "STARTED"} trigger={<Button type="button" variant={p.highlight ? "hero" : "outlineGlow"} className="zoom-glow mt-8 w-full">Start free trial</Button>} />
               </div>
             ))}
           </div>
