@@ -36,7 +36,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:4173',
   'http://localhost:3000',
-  'https://dial.webcodexus.com',
+  'https://www.webdial.in',
 ].filter(Boolean);
 
 if (process.env.FRONTEND_URL) {
