@@ -1,3 +1,5 @@
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { TrialDialog } from "@/components/site/TrialDialog";
@@ -37,6 +39,8 @@ const steps = [
 export function App() {
   return (
     <div className="page-shell">
+      <Analytics />
+      <SpeedInsights />
       <Header />
 
       <main>
